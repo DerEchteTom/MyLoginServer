@@ -1,15 +1,15 @@
 #!/bin/bash
 
-ZIPFILE="myloginsrv-flat-complete.zip"
+#ZIPFILE="myloginsrv-flat-complete.zip"
 TARGET_DIR="myloginsrv"
 
-if [ ! -f "$ZIPFILE" ]; then
-  echo "❌ Fehler: $ZIPFILE nicht gefunden im aktuellen Verzeichnis."
-  exit 1
-fi
+#if [ ! -f "$ZIPFILE" ]; then
+#  echo "❌ Fehler: $ZIPFILE nicht gefunden im aktuellen Verzeichnis."
+#  exit 1
+#fi
 
-echo "📦 Entpacke $ZIPFILE ..."
-unzip -o "$ZIPFILE" -d .
+#echo "📦 Entpacke $ZIPFILE ..."
+#unzip -o "$ZIPFILE" -d .
 
 cd "$TARGET_DIR" || { echo "❌ Verzeichnis $TARGET_DIR nicht gefunden."; exit 1; }
 
@@ -17,7 +17,7 @@ echo "🚀 Starte Docker-Container ..."
 docker-compose up -d
 
 echo "⏳ Warte auf PHP-Container ..."
-sleep 3
+sleep 5
 PHP_CONTAINER=$(docker ps --format '{{.Names}}' | grep myloginsrv-php)
 
 if [ -z "$PHP_CONTAINER" ]; then
