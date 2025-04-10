@@ -20,11 +20,10 @@ docker exec "$PHP_CONTAINER" php /var/www/html/init-db.php || { echo "❌ Datenb
 echo "📄 Lege audit.log-Datei an (falls noch nicht vorhanden) ..."
 docker exec "$PHP_CONTAINER" touch /var/www/html/audit.log
 
-echo "🔐 Setze Dateiberechtigungen für users.db und audit.log ..."
-docker exec "$PHP_CONTAINER" sh -c "test -f /var/www/html/audit.log && chown www-data:www-data /var/www/html/audit.log"
-docker exec "$PHP_CONTAINER" sh -c "test -f /var/www/html/audit.log && chmod 664 /var/www/html/audit.log"
+echo "🔐 Setze Dateiberechtigungen für users.db, audit.log und Arbeitsverzeichnis ..."
+docker exec "$PHP_CONTAINER" chown -R www-data:www-data /var/www/html
 
-chmod -R 755 .
+docker exec "$PHP_CONTAINER" chmod -R 777 /var/www/html
 
 IP=$(hostname -I | awk '{print $1}')
 echo "✅ Setup abgeschlossen. Zugriff unter: http://$IP:8080"
