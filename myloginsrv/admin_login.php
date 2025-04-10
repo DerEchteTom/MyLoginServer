@@ -45,7 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button type="submit" class="btn btn-primary w-100">Anmelden</button>
             </form>
             <a href="index.php" class="btn btn-link mt-3">Zurück zur Startseite</a>
-            <a href="login.php" class="btn btn-link mt-1">Normales Login</a>
+            $1
+<a href="register.php" class="btn btn-link mt-1">Registrieren</a>
         </div>
     </div>
 </div>
