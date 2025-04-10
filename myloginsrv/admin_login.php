@@ -1,14 +1,6 @@
 <?php
 session_start();
 
-// Wenn bereits als Admin eingeloggt → weiterleiten
-if (isset($_SESSION['user']) && ($_SESSION['role'] ?? '') === 'admin') {
-    file_put_contents("audit.log", date('c') . " ADMIN LOGIN ATTEMPT: {$_POST['username']} FROM {$_SERVER['REMOTE_ADDR']}
-", FILE_APPEND);
-        header("Location: admin.php");
-    exit;
-}
-
 $error = "";
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $db = new PDO('sqlite:users.db');
@@ -18,11 +10,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($user && password_verify($_POST['password'], $user['password'])) {
         $_SESSION['user'] = $user['username'];
-        $_SESSION['role'] = $user['role'];
+        $_SESSION['role'] = 'admin';
+        file_put_contents("audit.log", date('c') . " ADMIN LOGIN: {$user['username']} FROM {$_SERVER['REMOTE_ADDR']}\n", FILE_APPEND);
         header("Location: admin.php");
         exit;
     } else {
-        $error = "❌ Ungültiger Admin-Login.";
+        $error = "Ungültige Admin-Anmeldedaten.";
     }
 }
 ?>
@@ -38,23 +31,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container" style="max-width: 400px; margin-top: 100px;">
     <div class="card">
         <div class="card-body">
-            <h4 class="mb-4">🔐 Admin Login</h4>
-            <?php if ($error): ?>
-                <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
-            <?php endif; ?>
+            <h4 class="mb-4">Admin Login</h4>
+            <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
             <form method="post">
                 <div class="mb-3">
-                    <label for="username" class="form-label">Benutzername</label>
+                    <label class="form-label">Benutzername</label>
                     <input type="text" class="form-control" name="username" required autofocus>
                 </div>
                 <div class="mb-3">
-                    <label for="password" class="form-label">Passwort</label>
+                    <label class="form-label">Passwort</label>
                     <input type="password" class="form-control" name="password" required>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Anmelden</button>
             </form>
             <a href="index.php" class="btn btn-link mt-3">Zurück zur Startseite</a>
-<a href="login.php" class="btn btn-link mt-1">🔓 Normales Login</a>
+            <a href="login.php" class="btn btn-link mt-1">Normales Login</a>
         </div>
     </div>
 </div>

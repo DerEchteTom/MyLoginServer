@@ -19,11 +19,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($user) {
             $token = bin2hex(random_bytes(32));
-            $expires = time() + 3600; // 1 Stunde gültig
+            $expires = time() + 3600;
             $db->prepare("UPDATE users SET reset_token = :token, reset_expires = :expires WHERE id = :id")
                 ->execute([':token' => $token, ':expires' => $expires, ':id' => $user['id']]);
 
-            // Mail senden
             $mail = new PHPMailer(true);
             try {
                 $mail->isSMTP();
@@ -35,13 +34,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $link = "http://" . $_SERVER['HTTP_HOST'] . "/reset.php?token=$token";
                 $mail->Body = "Hallo {$user['username']},\n\nKlicke auf folgenden Link, um dein Passwort zurückzusetzen:\n$link\n\nDieser Link ist 1 Stunde gültig.";
                 $mail->send();
-                $success = "✅ Falls ein Konto existiert, wurde eine E-Mail zum Zurücksetzen des Passworts gesendet.";
+                $success = "Falls ein Konto existiert, wurde eine E-Mail zum Zurücksetzen des Passworts gesendet.";
                 file_put_contents("audit.log", date('c') . " PASSWORD RESET REQUEST: {$user['username']} FROM {$_SERVER['REMOTE_ADDR']}\n", FILE_APPEND);
             } catch (Exception $e) {
                 $error = "Fehler beim Senden der E-Mail: " . $mail->ErrorInfo;
             }
         } else {
-            $success = "✅ Falls ein Konto existiert, wurde eine E-Mail zum Zurücksetzen des Passworts gesendet.";
+            $success = "Falls ein Konto existiert, wurde eine E-Mail zum Zurücksetzen des Passworts gesendet.";
         }
     }
 }
@@ -58,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container mt-5" style="max-width: 500px;">
     <div class="card">
         <div class="card-body">
-            <h4 class="mb-4">🔑 Passwort vergessen</h4>
+            <h4 class="mb-4">Passwort vergessen</h4>
             <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
             <?php if ($success): ?><div class="alert alert-success"><?= htmlspecialchars($success) ?></div><?php endif; ?>
             <form method="post">
@@ -68,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Zurücksetzen anfordern</button>
             </form>
-            <a href="login.php" class="btn btn-link mt-3">🔙 Zurück zum Login</a>
+            <a href="login.php" class="btn btn-link mt-3">Zurück zum Login</a>
         </div>
     </div>
 </div>

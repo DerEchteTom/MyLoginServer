@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         exit;
     } else {
-        $error = "❌ Ungültige Anmeldedaten.";
+        $error = "Ungültige Anmeldedaten.";
     }
 }
 ?>
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container" style="max-width: 400px; margin-top: 100px;">
     <div class="card">
         <div class="card-body">
-            <h4 class="mb-4">🔐 Login</h4>
+            <h4 class="mb-4">Login</h4>
             <?php if ($error): ?>
                 <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
@@ -57,9 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <input type="password" class="form-control" name="password" required>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Anmelden</button>
-        
-            <a href="forgot.php" class="btn btn-link mt-2">🔑 Passwort vergessen?</a>
-            <a href="index.php" class="btn btn-link mt-3">Zurück zur Startseite</a>
+            </form>
+            <a href="forgot.php" class="btn btn-link mt-2">Passwort vergessen?</a>
         </div>
     </div>
 </div>
