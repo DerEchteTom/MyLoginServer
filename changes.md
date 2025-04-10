@@ -1,34 +1,28 @@
-# 📋 Änderungsprotokoll – MyLoginSrv
+# Changelog – MyLoginServer
 
-## Version 1.0.1 – Rechtefix & Git-Integration
-
-### ✅ Verbesserungen
-- `setup.sh`: Setzt automatisch Rechte für `users.db` und `audit.log`
-- `.gitattributes`: Erzwingt `LF`-Zeilenenden für Linux-Kompatibilität
-- `.editorconfig`: Konfiguriert Editorverhalten (UTF-8, Einrückung, EOL)
-- Hinweise für Git-Push-Probleme & Workflows ergänzt (Pull vs. Force Push)
-- Admin-Standardbenutzer (`admin` / `adminpass`) wird bei leerer Datenbank automatisch erstellt
+## v1.4.0 – 2024-04-10
+- Wechsel auf neue Projektbasis (Reset des Chat-Kontexts)
+- Nutzung der aktuellen GitHub-Version als verbindliche Quelle
+- Unterstützung für `.env`-Konfiguration in `admin_mailtest.php` hinzugefügt
+- Verbesserte Setup-Logik für SMTP-Umgebungsvariablen
+- Korrektur von Verweisen auf doppelte Registrieren-Links
+- Link zur Registrierung auf `login.php` hinzugefügt (nicht in `admin_login.php`)
+- Sicherheitsprüfung und Role-Checks in allen Admin-Views vereinheitlicht
+- Erweiterung der `reset.php` mit Tokenprüfung und Logging
 
 ---
 
-## Version 1.0.0 – Initial Release
+## Frühere Versionen
 
-### ✅ Hauptfunktionen
-- Benutzerregistrierung mit Passwort-Hashing
-- Login mit Session-Handling und Redirect-Ziel
-- Passwort vergessen → Token-E-Mail-Versand via PHPMailer
-- Passwort zurücksetzen mit Tokenprüfung
-- Adminbereich mit Benutzerliste, Aktiv/Deaktiv-Schalter und Weiterleitungs-URLs
-- Benutzer können mehrere Redirect-URLs erhalten (Textarea-Interface)
+### v1.3.0
+- Admin-Dashboard mit Benutzerverwaltung, Mail-Test, Loganzeige
+- Audit-Log-Datei `audit.log` eingeführt
+- PHPMailer Integration mit SMTP-Konfiguration
 
-### 🔐 Sicherheit & Protokollierung
-- `audit.log` mit IP-Adresse, Zeitstempel und Aktion (Login, Logout, Änderungen)
-- SQLite-Datenbank: `users.db` mit Feldern für Passwort, Token, Weiterleitung, aktiv
-- Eingabefelder serverseitig validiert
+### v1.2.0
+- Passwort zurücksetzen per Token
+- Registrierung und Validierung
+- Dark Mode optional über CSS
 
-### 📦 Systemaufbau
-- Docker-basiertes Setup (nginx + php-fpm)
-- `setup.sh`: automatisierter Installer mit IP-Ausgabe, Rechteprüfung und Containerinitialisierung
-- `.env.example`: SMTP-Konfiguration per Umgebungsvariable
-- Volle Integration von PHPMailer vorbereitet
-- Minimaler Bootstrap-Stil für responsive UI
+### v1.0.0
+- Basisfunktionen: Login, Logout, Session-Handling
