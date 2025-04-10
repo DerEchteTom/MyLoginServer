@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $env = preg_replace("/^SMTP_AUTH=.*/m", "SMTP_AUTH=" . $_POST['auth'], $env);
         $env = preg_replace("/^SMTP_SECURE=.*/m", "SMTP_SECURE=" . $_POST['secure'], $env);
         if (!@file_put_contents($envFile, $env)) {
-    \$result = 'Die Konfiguration konnte nicht gespeichert werden – Schreibrechte auf .env fehlen.';
+    $result = 'Die Konfiguration konnte nicht gespeichert werden – Schreibrechte auf .env fehlen.';
 }
 
         putenv("SMTP_HOST={$_POST['host']}");
