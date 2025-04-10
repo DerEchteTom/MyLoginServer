@@ -8,8 +8,22 @@ if (!isset($_SESSION['user']) || ($_SESSION['role'] ?? '') !== 'admin') {
 
 $db = new PDO('sqlite:users.db');
 
-// Änderungen speichern
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Neuen Benutzer hinzufügen
+if (isset($_POST['new_username'], $_POST['new_password']) && trim($_POST['new_username']) !== '') {
+    $username = trim($_POST['new_username']);
+    $password = password_hash($_POST['new_password'], PASSWORD_DEFAULT);
+    $role = $_POST['new_role'] ?? 'user';
+    try {
+        $stmt = $db->prepare("INSERT INTO users (username, password, role, active, redirect_urls) VALUES (:u, :p, :r, 1, '[]')");
+        $stmt->execute([':u' => $username, ':p' => $password, ':r' => $role]);
+        file_put_contents("audit.log", date('c') . " ADMIN CREATE {$_SESSION['user']} CREATED USER '$username' FROM {$_SERVER['REMOTE_ADDR']}\n", FILE_APPEND);
+    } catch (Exception $e) {
+        $error = "❌ Benutzer konnte nicht hinzugefügt werden: " . $e->getMessage();
+    }
+}
+
+// Bestehende Benutzer bearbeiten
+if (isset($_POST['users'])) {
     foreach ($_POST['users'] as $id => $data) {
         $active = isset($data['active']) ? 1 : 0;
         $urls = json_encode(array_filter(array_map('trim', explode("\n", $data['urls']))));
@@ -32,6 +46,11 @@ $users = $db->query("SELECT * FROM users ORDER BY id ASC")->fetchAll(PDO::FETCH_
 <body class="bg-light">
 <div class="container mt-4">
     <h2 class="mb-4">Benutzerverwaltung</h2>
+
+    <?php if (!empty($error)): ?>
+        <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+    <?php endif; ?>
+
     <form method="post">
         <table class="table table-bordered bg-white">
             <thead>
@@ -59,6 +78,27 @@ $users = $db->query("SELECT * FROM users ORDER BY id ASC")->fetchAll(PDO::FETCH_
         </table>
         <button type="submit" class="btn btn-success">Änderungen speichern</button>
     </form>
+
+    <hr class="my-4">
+    <h4>➕ Neuen Benutzer anlegen</h4>
+    <form method="post" class="row g-3">
+        <div class="col-md-4">
+            <input type="text" name="new_username" class="form-control" placeholder="Benutzername" required>
+        </div>
+        <div class="col-md-4">
+            <input type="password" name="new_password" class="form-control" placeholder="Passwort" required>
+        </div>
+        <div class="col-md-2">
+            <select name="new_role" class="form-select">
+                <option value="user">user</option>
+                <option value="admin">admin</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Benutzer hinzufügen</button>
+        </div>
+    </form>
+
     <div class="mt-4">
         <a href="admin.php" class="btn btn-secondary">Zurück zum Adminbereich</a>
     </div>
