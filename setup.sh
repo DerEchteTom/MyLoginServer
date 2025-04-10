@@ -17,9 +17,12 @@ fi
 echo "🔧 Initialisiere Datenbank ..."
 docker exec "$PHP_CONTAINER" php /var/www/html/init-db.php || { echo "❌ Datenbankinitialisierung fehlgeschlagen."; exit 1; }
 
+echo "📄 Lege audit.log-Datei an (falls noch nicht vorhanden) ..."
+docker exec "$PHP_CONTAINER" touch /var/www/html/audit.log
+
 echo "🔐 Setze Dateiberechtigungen für users.db und audit.log ..."
-docker exec "$PHP_CONTAINER" chown www-data:www-data /var/www/html/users.db /var/www/html/audit.log
-docker exec "$PHP_CONTAINER" chmod 664 /var/www/html/users.db /var/www/html/audit.log
+docker exec "$PHP_CONTAINER" sh -c "test -f /var/www/html/audit.log && chown www-data:www-data /var/www/html/audit.log"
+docker exec "$PHP_CONTAINER" sh -c "test -f /var/www/html/audit.log && chmod 664 /var/www/html/audit.log"
 
 chmod -R 755 .
 
