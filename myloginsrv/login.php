@@ -66,6 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
             <div class="mt-3 text-center">
                 <a href="forgot.php">Passwort vergessen?</a>
+                <a href="register.php" class="btn btn-link mt-1">Registrieren</a>
             </div>
         </div>
     </div>
