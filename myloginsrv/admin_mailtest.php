@@ -1,4 +1,16 @@
 <?php
+// .env manuell einlesen, falls phpdotenv nicht verwendet wird
+function parseEnvFile($file) {
+    if (!file_exists($file)) return;
+    foreach (file($file) as $line) {
+        if (strpos(trim($line), '=') !== false) {
+            list($key, $val) = explode('=', trim($line), 2);
+            putenv(trim($key) . '=' . trim($val));
+        }
+    }
+}
+parseEnvFile(__DIR__ . '/.env');
+
 session_start();
 if (!isset($_SESSION['user']) || ($_SESSION['role'] ?? '') !== 'admin') {
     header("Location: login.php");
