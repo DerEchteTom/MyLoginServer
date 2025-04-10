@@ -1,20 +1,29 @@
 <?php
 session_start();
 
-// Lade Composer Autoloader, wenn vorhanden
-if (file_exists(__DIR__ . '/vendor/autoload.php')) {
-    require_once __DIR__ . '/vendor/autoload.php';
+// Wenn bereits als Admin eingeloggt → weiterleiten
+if (isset($_SESSION['user']) && ($_SESSION['role'] ?? '') === 'admin') {
+    file_put_contents("audit.log", date('c') . " ADMIN LOGIN ATTEMPT: {$_POST['username']} FROM {$_SERVER['REMOTE_ADDR']}
+", FILE_APPEND);
+        header("Location: admin.php");
+    exit;
 }
 
-use PHPMailer\PHPMailer\PHPMailer;
+$error = "";
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $db = new PDO('sqlite:users.db');
+    $stmt = $db->prepare("SELECT * FROM users WHERE username = :username AND role = 'admin' LIMIT 1");
+    $stmt->execute([':username' => $_POST['username']]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Prüfe, ob PHPMailer-Klasse verfügbar ist
-$mailerAvailable = class_exists('PHPMailer\\PHPMailer\\PHPMailer');
-
-// Zugriffskontrolle
-if (!isset($_SESSION['user']) || ($_SESSION['role'] ?? '') !== 'admin') {
-    header("Location: login.php");
-    exit;
+    if ($user && password_verify($_POST['password'], $user['password'])) {
+        $_SESSION['user'] = $user['username'];
+        $_SESSION['role'] = $user['role'];
+        header("Location: admin.php");
+        exit;
+    } else {
+        $error = "❌ Ungültiger Admin-Login.";
+    }
 }
 ?>
 
@@ -22,25 +31,30 @@ if (!isset($_SESSION['user']) || ($_SESSION['role'] ?? '') !== 'admin') {
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Admin-Dashboard</title>
+    <title>Admin Login</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-<div class="container mt-5" style="max-width: 600px;">
+<div class="container" style="max-width: 400px; margin-top: 100px;">
     <div class="card">
         <div class="card-body">
-            <h3 class="mb-4">Admin-Dashboard</h3>
-            <div class="d-grid gap-3">
-                <a href="admin_users.php" class="btn btn-outline-primary">👥 Benutzerverwaltung</a>
-                <?php if ($mailerAvailable): ?>
-                    <a href="admin_mailtest.php" class="btn btn-outline-secondary">📧 Mail-Test (SMTP)</a>
-                <?php else: ?>
-                    <div class="alert alert-warning mb-0">⚠️ PHPMailer ist nicht installiert – Mail-Test nicht verfügbar.</div>
-                <?php endif; ?>
-                <a href="admin_logs.php" class="btn btn-outline-dark">📄 Logdatei anzeigen</a>
-                <a href="index.php" class="btn btn-outline-warning">⬅ Zurück zur Startseite</a>
-                <a href="logout.php" class="btn btn-danger">🚪 Logout</a>
-            </div>
+            <h4 class="mb-4">🔐 Admin Login</h4>
+            <?php if ($error): ?>
+                <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+            <?php endif; ?>
+            <form method="post">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Benutzername</label>
+                    <input type="text" class="form-control" name="username" required autofocus>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Passwort</label>
+                    <input type="password" class="form-control" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Anmelden</button>
+            </form>
+            <a href="index.php" class="btn btn-link mt-3">Zurück zur Startseite</a>
+<a href="login.php" class="btn btn-link mt-1">🔓 Normales Login</a>
         </div>
     </div>
 </div>
