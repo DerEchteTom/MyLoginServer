@@ -30,5 +30,24 @@ docker exec "$PHP_CONTAINER" chmod -R 777 /var/www/html
 echo "🧪 Führe SQLite-Schreibtest durch ..."
 docker exec "$PHP_CONTAINER" php /var/www/html/test.php || echo "❌ Schreibtest fehlgeschlagen"
 
+# 📦 Prüfe PHPMailer-Installation und Composer-Abhängigkeiten
+echo "🔍 Prüfe PHPMailer-Installation im Container ..."
+docker exec "$PHP_CONTAINER" bash -c "[ -d /var/www/html/vendor/phpmailer/phpmailer ]"
+
+if [ $? -ne 0 ]; then
+  read -p "❓ PHPMailer ist nicht installiert. Jetzt installieren? (y/n): " install_phpmailer
+  if [ "$install_phpmailer" = "y" ]; then
+    echo "📋 Prüfe erforderliche PHP-Erweiterungen ..."
+    docker exec "$PHP_CONTAINER" bash -c "apt-get update && apt-get install -y php-curl php-zip php-openssl unzip curl"
+    echo "📦 Installiere Composer & PHPMailer im Container ..."
+    docker exec "$PHP_CONTAINER" bash -c "cd /var/www/html && curl -sS https://getcomposer.org/installer | php && php composer.phar require phpmailer/phpmailer"
+    echo "✅ PHPMailer erfolgreich installiert."
+  else
+    echo "⚠️ PHPMailer wurde übersprungen. Mailfunktionen sind deaktiviert."
+  fi
+else
+  echo "✅ PHPMailer ist bereits vorhanden."
+fi
+
 IP=$(hostname -I | awk '{print $1}')
 echo "✅ Setup abgeschlossen. Zugriff unter: http://$IP:8080"
