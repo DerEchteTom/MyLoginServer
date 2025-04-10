@@ -1,13 +1,21 @@
 <?php
 session_start();
 
+// Lade Composer Autoloader, wenn vorhanden
+if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+}
+
+use PHPMailer\PHPMailer\PHPMailer;
+
+// Prüfe, ob PHPMailer-Klasse verfügbar ist
+$mailerAvailable = class_exists('PHPMailer\\PHPMailer\\PHPMailer');
+
+// Zugriffskontrolle
 if (!isset($_SESSION['user']) || ($_SESSION['role'] ?? '') !== 'admin') {
     header("Location: login.php");
     exit;
 }
-
-use PHPMailer\PHPMailer\PHPMailer;
-$mailerAvailable = class_exists('PHPMailer\PHPMailer\PHPMailer');
 ?>
 
 <!DOCTYPE html>
@@ -27,7 +35,7 @@ $mailerAvailable = class_exists('PHPMailer\PHPMailer\PHPMailer');
                 <?php if ($mailerAvailable): ?>
                     <a href="admin_mailtest.php" class="btn btn-outline-secondary">📧 Mail-Test (SMTP)</a>
                 <?php else: ?>
-                    <div class="alert alert-warning">⚠️ PHPMailer ist nicht installiert – Mail-Test nicht verfügbar.</div>
+                    <div class="alert alert-warning mb-0">⚠️ PHPMailer ist nicht installiert – Mail-Test nicht verfügbar.</div>
                 <?php endif; ?>
                 <a href="admin_logs.php" class="btn btn-outline-dark">📄 Logdatei anzeigen</a>
                 <a href="index.php" class="btn btn-outline-warning">⬅ Zurück zur Startseite</a>
