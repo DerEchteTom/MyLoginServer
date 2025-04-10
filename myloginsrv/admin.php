@@ -27,6 +27,7 @@ $mailerAvailable = class_exists('PHPMailer\\PHPMailer\\PHPMailer');
             <div class="d-grid gap-3">
                 <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
                     <a href="admin_users.php" class="btn btn-outline-primary">Benutzerverwaltung</a>
+                    <a href="admin_userlinks.php" class="btn btn-outline-primary">Benutzer-Links</a>
                     <?php if ($mailerAvailable): ?>
                         <a href="admin_mailtest.php" class="btn btn-outline-secondary">Mail-Test (SMTP)</a>
                     <?php else: ?>
