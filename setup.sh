@@ -24,7 +24,6 @@ echo "🔐 Setze Dateiberechtigungen für users.db und audit.log ..."
 docker exec "$PHP_CONTAINER" sh -c "test -f /var/www/html/audit.log && chown www-data:www-data /var/www/html/audit.log"
 docker exec "$PHP_CONTAINER" sh -c "test -f /var/www/html/audit.log && chmod 664 /var/www/html/audit.log"
 
->>>>>>> 5eb5e9277802cb57f9ce2e31e862f511090cb7aa
 chmod -R 755 .
 
 IP=$(hostname -I | awk '{print $1}')
