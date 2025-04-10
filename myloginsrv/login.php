@@ -1,42 +1,74 @@
 <?php
-try {
-    $db = new PDO('sqlite:users.db');
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+session_start();
 
-    // Haupttabelle für Benutzer
-    $db->exec("CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'user',
-        active INTEGER NOT NULL DEFAULT 1,
-        redirect_urls TEXT DEFAULT '[]',
-        reset_token TEXT DEFAULT NULL,
-        reset_expires INTEGER DEFAULT NULL
-    )");
+// Redirect to dashboard if already logged in
+if (isset($_SESSION['user'])) {
+    header("Location: links.php");
+    exit;
+}
 
-    // Neue Tabelle: Benutzerlinks
-    $db->exec("CREATE TABLE IF NOT EXISTS user_links (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        alias TEXT NOT NULL,
-        url TEXT NOT NULL,
-        FOREIGN KEY(user_id) REFERENCES users(id)
-    )");
+$error = "";
 
-    // Admin-Benutzer anlegen, falls noch leer
-    $check = $db->query("SELECT COUNT(*) FROM users")->fetchColumn();
-    if ((int)$check === 0) {
-        $adminUser = 'admin';
-        $adminPass = password_hash('adminpass', PASSWORD_DEFAULT);
-        $stmt = $db->prepare("INSERT INTO users (username, password, role, active, redirect_urls) VALUES (:u, :p, 'admin', 1, '[]')");
-        $stmt->execute([':u' => $adminUser, ':p' => $adminPass]);
-        echo "Admin-Benutzer 'admin' mit Passwort 'adminpass' erstellt.\n";
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+
+    if ($username && $password) {
+        $db = new PDO('sqlite:users.db');
+        $stmt = $db->prepare("SELECT * FROM users WHERE username = :username AND active = 1");
+        $stmt->execute([':username' => $username]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($user && password_verify($password, $user['password'])) {
+            $_SESSION['user'] = $user['username'];
+            $_SESSION['role'] = $user['role'];
+            file_put_contents("audit.log", date('c') . " LOGIN $username FROM {$_SERVER['REMOTE_ADDR']}\n", FILE_APPEND);
+
+            $target = ($user['role'] === 'admin') ? 'admin.php' : 'links.php';
+            header("Location: $target");
+            exit;
+        } else {
+            $error = "Benutzername oder Passwort ist falsch.";
+            file_put_contents("audit.log", date('c') . " FAILED LOGIN $username FROM {$_SERVER['REMOTE_ADDR']}\n", FILE_APPEND);
+        }
     } else {
-        echo "Datenbank bereits initialisiert.\n";
+        $error = "Bitte Benutzername und Passwort eingeben.";
     }
-} catch (Exception $e) {
-    echo "Fehler beim Initialisieren der Datenbank: " . $e->getMessage();
-    exit(1);
 }
 ?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container mt-5" style="max-width: 400px;">
+    <div class="card">
+        <div class="card-body">
+            <h4 class="card-title mb-4">Login</h4>
+            <?php if ($error): ?>
+                <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+            <?php endif; ?>
+            <form method="post">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Benutzername</label>
+                    <input type="text" class="form-control" id="username" name="username" required>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Passwort</label>
+                    <input type="password" class="form-control" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Anmelden</button>
+            </form>
+            <div class="mt-3 text-center">
+                <a href="forgot.php">Passwort vergessen?</a><br>
+                <a href="register.php" class="btn btn-link mt-1">Registrieren</a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
