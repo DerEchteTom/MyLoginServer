@@ -9,6 +9,18 @@ require_once __DIR__ . '/vendor/autoload.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
+// .env lesen, falls getenv nicht reicht
+function parseEnvFile($file) {
+    if (!file_exists($file)) return;
+    foreach (file($file) as $line) {
+        if (strpos($line, '=') !== false) {
+            list($key, $val) = explode('=', trim($line), 2);
+            putenv(trim($key) . '=' . trim($val));
+        }
+    }
+}
+parseEnvFile(__DIR__ . '/.env');
+
 $error = "";
 $success = "";
 
@@ -23,46 +35,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($user) {
             $token = bin2hex(random_bytes(32));
-            $expires = time() + 3600; // 1 Stunde gültig
+            $expires = time() + 3600;
 
             $stmt = $db->prepare("UPDATE users SET reset_token = :token, reset_expires = :expires WHERE id = :id");
             $stmt->execute([':token' => $token, ':expires' => $expires, ':id' => $user['id']]);
 
-            // Mail versenden
             $mail = new PHPMailer(true);
-            $mail->isSMTP();
-            $mail->Host = getenv('SMTP_HOST');
-            $mail->Port = getenv('SMTP_PORT');
-            $mail->setFrom(getenv('SMTP_FROM'));
-            $mail->addAddress($email);
-            $mail->Subject = "Passwort-Zurücksetzen";
-            $mail->Body = "Hallo {$user['username']},\n\nfolgender Link führt dich zur Passwort-Zurücksetzen-Seite:\n\nhttp://" . $_SERVER['HTTP_HOST'] . "/reset.php?token=$token\n\nDieser Link ist 1 Stunde gültig.";
-
-            $mail->SMTPAuth = (getenv('SMTP_AUTH') === 'true');
-            if ($mail->SMTPAuth) {
-                $mail->Username = getenv('SMTP_USER');
-                $mail->Password = getenv('SMTP_PASS');
-            }
-            $secure = getenv('SMTP_SECURE');
-            if (in_array($secure, ['tls', 'ssl'])) {
-                $mail->SMTPSecure = $secure;
-            }
-            $mail->SMTPOptions = [
-                'ssl' => [
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
-                    'allow_self_signed' => true
-                ]
-            ];
-
             try {
+                $mail->isSMTP();
+                $mail->Host = getenv('SMTP_HOST');
+                $mail->Port = getenv('SMTP_PORT');
+
+                $from = getenv('SMTP_FROM');
+                if (!$from) {
+                    throw new Exception("Absenderadresse (SMTP_FROM) ist nicht gesetzt.");
+                }
+
+                $mail->setFrom($from);
+                $mail->addAddress($email);
+                $mail->Subject = "Passwort-Zurücksetzen";
+                $mail->Body = "Hallo {$user['username']},\n\nKlicke auf den folgenden Link zum Zurücksetzen deines Passworts:\nhttp://" . $_SERVER['HTTP_HOST'] . "/reset.php?token=$token\n\nDer Link ist 1 Stunde gültig.";
+
+                $mail->SMTPAuth = (getenv('SMTP_AUTH') === 'true');
+                if ($mail->SMTPAuth) {
+                    $mail->Username = getenv('SMTP_USER');
+                    $mail->Password = getenv('SMTP_PASS');
+                }
+
+                $secure = getenv('SMTP_SECURE');
+                if (in_array($secure, ['tls', 'ssl'])) {
+                    $mail->SMTPSecure = $secure;
+                }
+
+                $mail->SMTPOptions = [
+                    'ssl' => [
+                        'verify_peer' => false,
+                        'verify_peer_name' => false,
+                        'allow_self_signed' => true
+                    ]
+                ];
+
                 $mail->send();
-                $success = "Eine E-Mail mit weiteren Anweisungen wurde an $email gesendet.";
+                $success = "Eine E-Mail zum Zurücksetzen wurde gesendet.";
             } catch (Exception $e) {
-                $error = "Fehler beim Senden der E-Mail: " . $mail->ErrorInfo;
+                $error = "Fehler beim Senden der E-Mail.";
+                file_put_contents("error.log", date('c') . " [forgot.php] " . $e->getMessage() . "\n", FILE_APPEND);
             }
         } else {
-            $error = "Keine Benutzerkonto mit dieser E-Mail gefunden.";
+            $error = "Kein Benutzer mit dieser E-Mail gefunden.";
         }
     } else {
         $error = "Bitte eine gültige E-Mail-Adresse eingeben.";

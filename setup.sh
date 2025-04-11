@@ -20,8 +20,12 @@ docker exec "$PHP_CONTAINER" php /var/www/html/init-db.php || { echo "Datenbanki
 echo "Lege audit.log-Datei an (falls noch nicht vorhanden) ..."
 docker exec "$PHP_CONTAINER" touch /var/www/html/audit.log
 
+echo "Lege error.log-Datei an (falls noch nicht vorhanden) ..."
+docker exec "$PHP_CONTAINER" touch /var/www/html/error.log
+
 echo "Setze Dateiberechtigungen für users.db, audit.log und Arbeitsverzeichnis ..."
 docker exec "$PHP_CONTAINER" chown -R www-data:www-data /var/www/html
+
 docker exec "$PHP_CONTAINER" chmod -R 777 /var/www/html
 
 echo "Setze Rechte für .env-Datei ..."
