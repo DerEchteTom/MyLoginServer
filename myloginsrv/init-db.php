@@ -3,11 +3,15 @@ try {
     $db = new PDO('sqlite:users.db');
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // Haupttabelle für Benutzer
+    // Bestehende Spalten prüfen
+    $existingColumns = $db->query("PRAGMA table_info(users)")->fetchAll(PDO::FETCH_COLUMN, 1);
+
+    // Tabelle 'users' anlegen, falls noch nicht vorhanden
     $db->exec("CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
+        email TEXT,
         role TEXT NOT NULL DEFAULT 'user',
         active INTEGER NOT NULL DEFAULT 1,
         redirect_urls TEXT DEFAULT '[]',
@@ -15,21 +19,18 @@ try {
         reset_expires INTEGER DEFAULT NULL
     )");
 
-    // Neue Tabelle: Benutzerlinks
-    $db->exec("CREATE TABLE IF NOT EXISTS user_links (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        alias TEXT NOT NULL,
-        url TEXT NOT NULL,
-        FOREIGN KEY(user_id) REFERENCES users(id)
-    )");
+    // Spalte 'email' nachrüsten, falls sie fehlt (ohne UNIQUE wegen SQLite Einschränkung)
+    if (!in_array('email', $existingColumns)) {
+        $db->exec("ALTER TABLE users ADD COLUMN email TEXT");
+        echo "Spalte 'email' zur Tabelle 'users' hinzugefügt.\n";
+    }
 
-    // Admin-Benutzer anlegen, falls noch leer
+    // Admin-Benutzer erzeugen, falls noch keiner vorhanden
     $check = $db->query("SELECT COUNT(*) FROM users")->fetchColumn();
     if ((int)$check === 0) {
         $adminUser = 'admin';
         $adminPass = password_hash('adminpass', PASSWORD_DEFAULT);
-        $stmt = $db->prepare("INSERT INTO users (username, password, role, active, redirect_urls) VALUES (:u, :p, 'admin', 1, '[]')");
+        $stmt = $db->prepare("INSERT INTO users (username, password, email, role, active, redirect_urls) VALUES (:u, :p, '', 'admin', 1, '[]')");
         $stmt->execute([':u' => $adminUser, ':p' => $adminPass]);
         echo "Admin-Benutzer 'admin' mit Passwort 'adminpass' erstellt.\n";
     } else {

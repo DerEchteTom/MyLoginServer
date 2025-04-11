@@ -1,35 +1,39 @@
 <?php
 session_start();
 if (isset($_SESSION['user'])) {
-    header("Location: index.php");
+    header("Location: links.php");
     exit;
 }
 
 $error = "";
-$success = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username']);
-    $password = $_POST['password'];
-    $email = trim($_POST['email']);
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $email = trim($_POST['email'] ?? '');
 
-    if ($username === '' || $password === '' || $email === '') {
-        $error = "Bitte alle Felder ausfüllen.";
-    } else {
-        $db = new PDO('sqlite:users.db');
-        $stmt = $db->prepare("SELECT COUNT(*) FROM users WHERE username = :username");
-        $stmt->execute([':username' => $username]);
-        if ($stmt->fetchColumn() > 0) {
-            $error = "Benutzername ist bereits vergeben.";
-        } else {
-            $stmt = $db->prepare("INSERT INTO users (username, password, email, role, active) VALUES (:username, :password, :email, 'user', 1)");
+    if ($username && $password && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        try {
+            $db = new PDO('sqlite:users.db');
+            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            $stmt = $db->prepare("INSERT INTO users (username, password, email, role, active, redirect_urls) VALUES (:u, :p, :e, 'user', 1, '[]')");
             $stmt->execute([
-                ':username' => $username,
-                ':password' => password_hash($password, PASSWORD_DEFAULT),
-                ':email' => $email
+                ':u' => $username,
+                ':p' => password_hash($password, PASSWORD_DEFAULT),
+                ':e' => $email
             ]);
-            $success = "Registrierung erfolgreich. Du kannst dich jetzt anmelden.";
+
+            $_SESSION['user'] = $username;
+            $_SESSION['role'] = 'user';
+            file_put_contents("audit.log", date('c') . " REGISTER $username FROM {$_SERVER['REMOTE_ADDR']}\n", FILE_APPEND);
+            header("Location: links.php");
+            exit;
+        } catch (PDOException $e) {
+            $error = "Fehler bei der Registrierung: " . $e->getMessage();
         }
+    } else {
+        $error = "Bitte alle Felder korrekt ausfüllen.";
     }
 }
 ?>
@@ -42,28 +46,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-<div class="container" style="max-width: 400px; margin-top: 80px;">
+<div class="container mt-5" style="max-width: 500px;">
     <div class="card">
         <div class="card-body">
-            <h4 class="mb-4">Registrieren</h4>
-            <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
-            <?php if ($success): ?><div class="alert alert-success"><?= htmlspecialchars($success) ?></div><?php endif; ?>
+            <h4 class="card-title mb-4">Registrieren</h4>
+            <?php if ($error): ?>
+                <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+            <?php endif; ?>
             <form method="post">
                 <div class="mb-3">
-                    <label class="form-label">Benutzername</label>
-                    <input type="text" name="username" class="form-control" required>
+                    <label for="username" class="form-label">Benutzername</label>
+                    <input type="text" class="form-control" id="username" name="username" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">E-Mail</label>
-                    <input type="email" name="email" class="form-control" required>
+                    <label for="email" class="form-label">E-Mail-Adresse</label>
+                    <input type="email" class="form-control" id="email" name="email" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Passwort</label>
-                    <input type="password" name="password" class="form-control" required>
+                    <label for="password" class="form-label">Passwort</label>
+                    <input type="password" class="form-control" id="password" name="password" required>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Registrieren</button>
             </form>
-            <a href="login.php" class="btn btn-link mt-3">Zurück zum Login</a>
+            <div class="mt-3 text-center">
+                <a href="login.php">Zurück zum Login</a>
+            </div>
         </div>
     </div>
 </div>
