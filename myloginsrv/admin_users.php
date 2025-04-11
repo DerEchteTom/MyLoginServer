@@ -11,9 +11,29 @@ require_once 'link_utils.php';
 $db = new PDO('sqlite:users.db');
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+// Sofortige Aktiv/Deaktivierung (außer Admins)
+if (isset($_POST['toggle_active']) && isset($_POST['user_id'])) {
+    $id = (int)$_POST['user_id'];
+    $active = (int)$_POST['active'];
+
+    $stmt = $db->prepare("SELECT username, role FROM users WHERE id = :id");
+    $stmt->execute([':id' => $id]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($user && $user['role'] !== 'admin') {
+        $stmt = $db->prepare("UPDATE users SET active = :active WHERE id = :id");
+        $stmt->execute([':active' => $active, ':id' => $id]);
+
+        $statusText = $active ? "activated" : "deactivated";
+        file_put_contents("audit.log", date('c') . " ADMIN {$_SESSION['user']} $statusText user '{$user['username']}' (ID $id)\n", FILE_APPEND);
+    }
+
+    exit;
+}
+
 $error = $success = "";
 
-// Benutzer löschen (nicht admin!)
+// Benutzer löschen (nicht admin)
 if (isset($_POST['delete']) && isset($_POST['user_id'])) {
     $id = (int)$_POST['user_id'];
     $stmt = $db->prepare("SELECT username, role FROM users WHERE id = :id");
@@ -23,7 +43,7 @@ if (isset($_POST['delete']) && isset($_POST['user_id'])) {
     if ($user && $user['role'] !== 'admin') {
         $db->prepare("DELETE FROM users WHERE id = :id")->execute([':id' => $id]);
         $db->prepare("DELETE FROM user_links WHERE user_id = :id")->execute([':id' => $id]);
-        file_put_contents("audit.log", date('c') . " ADMIN {$_SESSION['user']} deleted user '{$user['username']}'\n", FILE_APPEND);
+        file_put_contents("audit.log", date('c') . " ADMIN {$_SESSION['user']} deleted user '{$user['username']}' (ID $id)\n", FILE_APPEND);
         $success = "Benutzer '" . htmlspecialchars($user['username']) . "' gelöscht.";
     } else {
         $error = "Der Admin kann nicht gelöscht werden.";
@@ -36,18 +56,16 @@ if (isset($_POST['save']) && isset($_POST['user_id'])) {
     $newUsername = trim($_POST['username']);
     $email = trim($_POST['email']);
     $role = $_POST['role'];
-    $active = isset($_POST['active']) ? 1 : 0;
 
-    $stmt = $db->prepare("SELECT username, active FROM users WHERE id = :id");
+    $stmt = $db->prepare("SELECT username FROM users WHERE id = :id");
     $stmt->execute([':id' => $id]);
     $old = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    $db->prepare("UPDATE users SET username = :username, email = :email, role = :role, active = :active WHERE id = :id")
+    $db->prepare("UPDATE users SET username = :username, email = :email, role = :role WHERE id = :id")
        ->execute([
            ':username' => $newUsername,
            ':email' => $email,
            ':role' => $role,
-           ':active' => $active,
            ':id' => $id
        ]);
 
@@ -57,21 +75,14 @@ if (isset($_POST['save']) && isset($_POST['user_id'])) {
            ->execute([':p' => $pass, ':id' => $id]);
     }
 
-    // Audit-Log
-    $adminName = $_SESSION['user'];
-    $now = date('c');
     if ($old && $old['username'] !== $newUsername) {
-        file_put_contents("audit.log", "$now ADMIN $adminName changed username of user ID $id from \"{$old['username']}\" to \"$newUsername\"\n", FILE_APPEND);
-    }
-    if ($old && $old['active'] != $active) {
-        $action = $active ? "activated" : "deactivated";
-        file_put_contents("audit.log", "$now ADMIN $adminName $action user ID $id\n", FILE_APPEND);
+        file_put_contents("audit.log", date('c') . " ADMIN {$_SESSION['user']} changed username of user ID $id from '{$old['username']}' to '$newUsername'\n", FILE_APPEND);
     }
 
     $success = "Benutzer aktualisiert.";
 }
 
-// Benutzer hinzufügen
+// Benutzer anlegen
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
     $username = trim($_POST['new_username']);
     $email = trim($_POST['new_email']);
@@ -87,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
             ]);
             $newUserId = $db->lastInsertId();
             addDefaultLinks($db, (int)$newUserId);
-            file_put_contents("audit.log", date('c') . " ADMIN {$_SESSION['user']} created user '$username'\n", FILE_APPEND);
+            file_put_contents("audit.log", date('c') . " ADMIN {$_SESSION['user']} created user '$username' (ID $newUserId)\n", FILE_APPEND);
             $success = "Benutzer erfolgreich erstellt.";
         } catch (PDOException $e) {
             $error = "Fehler: Benutzername oder E-Mail existiert bereits.";
@@ -105,6 +116,18 @@ $users = $db->query("SELECT * FROM users ORDER BY username ASC")->fetchAll(PDO::
     <meta charset="UTF-8">
     <title>Benutzerverwaltung</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script>
+    function toggleActive(userId, checkbox) {
+        fetch('', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'toggle_active=1&user_id=' + encodeURIComponent(userId) + '&active=' + (checkbox.checked ? '1' : '0')
+        }).then(() => {
+            checkbox.classList.add('border-success');
+            setTimeout(() => checkbox.classList.remove('border-success'), 1000);
+        });
+    }
+    </script>
 </head>
 <body class="bg-light">
 <div class="container mt-5">
@@ -136,6 +159,7 @@ $users = $db->query("SELECT * FROM users ORDER BY username ASC")->fetchAll(PDO::
         <table class="table table-bordered table-sm align-middle">
             <thead class="table-light">
                 <tr>
+                    <th>ID</th>
                     <th>Benutzername</th>
                     <th>E-Mail</th>
                     <th>Rolle</th>
@@ -147,6 +171,7 @@ $users = $db->query("SELECT * FROM users ORDER BY username ASC")->fetchAll(PDO::
             <tbody>
                 <?php foreach ($users as $user): ?>
                 <tr>
+                    <td><?= $user['id'] ?></td>
                     <td><input type="text" name="username" class="form-control form-control-sm" value="<?= htmlspecialchars($user['username']) ?>" required></td>
                     <td><input type="email" name="email" class="form-control form-control-sm" value="<?= htmlspecialchars($user['email']) ?>" required></td>
                     <td>
@@ -157,7 +182,11 @@ $users = $db->query("SELECT * FROM users ORDER BY username ASC")->fetchAll(PDO::
                     </td>
                     <td><input type="password" name="new_password" class="form-control form-control-sm" placeholder="Neues Passwort"></td>
                     <td class="text-center">
-                        <input type="checkbox" name="active" value="1" <?= $user['active'] ? 'checked' : '' ?>>
+                        <?php if ($user['role'] === 'admin'): ?>
+                            <span class="text-muted">immer aktiv</span>
+                        <?php else: ?>
+                            <input type="checkbox" onchange="toggleActive(<?= $user['id'] ?>, this)" <?= $user['active'] ? 'checked' : '' ?>>
+                        <?php endif; ?>
                     </td>
                     <td>
                         <div class="d-flex gap-1">
