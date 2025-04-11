@@ -23,6 +23,7 @@ if (isset($_POST['delete']) && isset($_POST['user_id'])) {
     if ($user && $user['role'] !== 'admin') {
         $db->prepare("DELETE FROM users WHERE id = :id")->execute([':id' => $id]);
         $db->prepare("DELETE FROM user_links WHERE user_id = :id")->execute([':id' => $id]);
+        file_put_contents("audit.log", date('c') . " ADMIN {$_SESSION['user']} deleted user '{$user['username']}'\n", FILE_APPEND);
         $success = "Benutzer '" . htmlspecialchars($user['username']) . "' gelöscht.";
     } else {
         $error = "Der Admin kann nicht gelöscht werden.";
@@ -32,24 +33,39 @@ if (isset($_POST['delete']) && isset($_POST['user_id'])) {
 // Benutzer speichern
 if (isset($_POST['save']) && isset($_POST['user_id'])) {
     $id = (int)$_POST['user_id'];
-    $username = trim($_POST['username']);
+    $newUsername = trim($_POST['username']);
     $email = trim($_POST['email']);
     $role = $_POST['role'];
     $active = isset($_POST['active']) ? 1 : 0;
 
-    $update = $db->prepare("UPDATE users SET username = :username, email = :email, role = :role, active = :active WHERE id = :id");
-    $update->execute([
-        ':username' => $username,
-        ':email' => $email,
-        ':role' => $role,
-        ':active' => $active,
-        ':id' => $id
-    ]);
+    $stmt = $db->prepare("SELECT username, active FROM users WHERE id = :id");
+    $stmt->execute([':id' => $id]);
+    $old = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $db->prepare("UPDATE users SET username = :username, email = :email, role = :role, active = :active WHERE id = :id")
+       ->execute([
+           ':username' => $newUsername,
+           ':email' => $email,
+           ':role' => $role,
+           ':active' => $active,
+           ':id' => $id
+       ]);
 
     if (!empty($_POST['new_password'])) {
         $pass = password_hash($_POST['new_password'], PASSWORD_DEFAULT);
         $db->prepare("UPDATE users SET password = :p WHERE id = :id")
            ->execute([':p' => $pass, ':id' => $id]);
+    }
+
+    // Audit-Log
+    $adminName = $_SESSION['user'];
+    $now = date('c');
+    if ($old && $old['username'] !== $newUsername) {
+        file_put_contents("audit.log", "$now ADMIN $adminName changed username of user ID $id from \"{$old['username']}\" to \"$newUsername\"\n", FILE_APPEND);
+    }
+    if ($old && $old['active'] != $active) {
+        $action = $active ? "activated" : "deactivated";
+        file_put_contents("audit.log", "$now ADMIN $adminName $action user ID $id\n", FILE_APPEND);
     }
 
     $success = "Benutzer aktualisiert.";
@@ -71,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
             ]);
             $newUserId = $db->lastInsertId();
             addDefaultLinks($db, (int)$newUserId);
+            file_put_contents("audit.log", date('c') . " ADMIN {$_SESSION['user']} created user '$username'\n", FILE_APPEND);
             $success = "Benutzer erfolgreich erstellt.";
         } catch (PDOException $e) {
             $error = "Fehler: Benutzername oder E-Mail existiert bereits.";
