@@ -1,0 +1,18 @@
+# Zeilenenden-Konfiguration
+* text=auto eol=lf
+
+# Shell-Skripte im Unix-Format
+*.sh text eol=lf
+
+# PHP-Dateien im Unix-Format
+*.php text eol=lf
+
+# Markdown und Textdateien im Unix-Format
+*.md text eol=lf
+*.txt text eol=lf
+
+# Ignoriere Zeilenende-Normalisierung für Binärdaten
+*.zip binary
+*.png binary
+*.jpg binary
+*.pdf binary
