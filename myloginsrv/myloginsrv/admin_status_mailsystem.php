@@ -1,115 +1,67 @@
 <?php
-// Datei: admin_status.php
+// Datei: admin_status_mailsystem.php – Stand: 2025-04-23 11:58 Europe/Berlin
 
+date_default_timezone_set('Europe/Berlin');
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth.php';
 requireRole('admin');
 
-function columnExists($db, $table, $column) {
-    $cols = $db->query("PRAGMA table_info($table)")->fetchAll(PDO::FETCH_COLUMN, 1);
-    return in_array($column, $cols);
+require_once __DIR__ . '/mailer_config.php';
+$env = debugSMTPEnv();
+$envRaw = file_exists('.env') ? file('.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) : [];
+$envOther = [];
+
+foreach ($envRaw as $line) {
+    if (strpos($line, '=') !== false) {
+        list($k, $v) = explode('=', $line, 2);
+        if (!array_key_exists(trim($k), $env)) {
+            $envOther[trim($k)] = trim($v);
+        }
+    }
 }
-
-$db = new PDO('sqlite:users.db');
-$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-$expectedTables = [
-    'users',
-    'user_links',
-    'link_requests'
-];
-
-$requiredUserColumns = ['username', 'password', 'email', 'role', 'active', 'redirect_urls', 'reset_token', 'reset_expires'];
-$requiredLinkRequestColumns = ['user_id', 'alias', 'url', 'created_at', 'status'];
-$requiredUserLinksColumns = ['username', 'alias', 'url'];
-
-$envPath = __DIR__ . '/.env';
-$requiredEnvVars = [
-    'SMTP_HOST', 'SMTP_PORT', 'SMTP_FROM', 'SMTP_SECURE',
-    'SMTP_AUTH', 'SMTP_USER', 'SMTP_PASS', 'ADMIN_EMAIL', 'MAIL_TRUST_SELF_SIGNED'
-];
-
 ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Systemstatus</title>
+    <title>Mail-Konfiguration</title>
     <link href="assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-<div class="container mt-5" style="max-width: 800px;">
-    <div class="card">
-        <div class="card-body">
-            <h4 class="mb-3">Systemstatus & Strukturprüfung</h4>
+<div class="container-fluid mt-4" style="max-width: 100%;">
+    <?php if (file_exists(__DIR__ . '/admin_tab_nav.php')) include __DIR__ . '/admin_tab_nav.php'; ?>
 
-            <h5>Datenbanktabellen</h5>
-            <ul>
-                <?php foreach ($expectedTables as $table): ?>
-                    <li>
-                        <?= $table ?>:
-                        <?= $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='$table'")->fetch() ? '<span class="text-success">✔︎ OK</span>' : '<span class="text-danger">✘ fehlt</span>' ?>
-                    </li>
+    <h4 class="mb-4">Mail-Konfiguration (.env)</h4>
+
+    <div class="bg-white border rounded p-3 small mb-4">
+        <h6>SMTP-bezogene Variablen</h6>
+        <table class="table table-sm table-bordered align-middle mb-0">
+            <thead class="table-light"><tr><th>Variable</th><th>Wert</th></tr></thead>
+            <tbody>
+                <?php foreach ($env as $key => $val): ?>
+                    <tr><td><?= htmlspecialchars($key) ?></td><td><?= htmlspecialchars($val) ?></td></tr>
                 <?php endforeach; ?>
-            </ul>
+            </tbody>
+        </table>
+    </div>
 
-            <h5>Spalten in users</h5>
-            <ul>
-                <?php foreach ($requiredUserColumns as $col): ?>
-                    <li><?= $col ?>:
-                        <?= columnExists($db, 'users', $col) ? '<span class="text-success">✔︎</span>' : '<span class="text-danger">✘ fehlt</span>' ?>
-                    </li>
+    <?php if (!empty($envOther)): ?>
+    <div class="bg-white border rounded p-3 small">
+        <h6>Weitere .env Variablen</h6>
+        <table class="table table-sm table-bordered align-middle mb-0">
+            <thead class="table-light"><tr><th>Variable</th><th>Wert</th></tr></thead>
+            <tbody>
+                <?php foreach ($envOther as $key => $val): ?>
+                    <tr><td><?= htmlspecialchars($key) ?></td><td><?= htmlspecialchars($val) ?></td></tr>
                 <?php endforeach; ?>
-            </ul>
+            </tbody>
+        </table>
+    </div>
+    <?php endif; ?>
 
-            <h5>Spalten in user_links</h5>
-            <ul>
-                <?php foreach ($requiredUserLinksColumns as $col): ?>
-                    <li><?= $col ?>:
-                        <?= columnExists($db, 'user_links', $col) ? '<span class="text-success">✔︎</span>' : '<span class="text-danger">✘ fehlt</span>' ?>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-
-            <h5>Spalten in link_requests</h5>
-            <ul>
-                <?php foreach ($requiredLinkRequestColumns as $col): ?>
-                    <li><?= $col ?>:
-                        <?= columnExists($db, 'link_requests', $col) ? '<span class="text-success">✔︎</span>' : '<span class="text-danger">✘ fehlt</span>' ?>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-
-            <h5>.env-Datei</h5>
-            <?php if (file_exists($envPath)): ?>
-                <ul>
-                    <?php
-                    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-                    $keys = [];
-                    foreach ($lines as $line) {
-                        $parts = explode('=', $line, 2);
-                        if (isset($parts[0])) $keys[] = trim($parts[0]);
-                    }
-                    foreach ($requiredEnvVars as $key):
-                        $found = in_array($key, $keys);
-                        ?>
-                        <li><?= $key ?>: <?= $found ? '<span class="text-success">✔︎</span>' : '<span class="text-danger">✘ fehlt</span>' ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php else: ?>
-                <p class="text-danger">✘ .env-Datei nicht gefunden</p>
-            <?php endif; ?>
-
-            <h5>Logdateien</h5>
-            <ul>
-                <li>audit.log: <?= file_exists('audit.log') ? '<span class="text-success">✔︎ vorhanden</span>' : '<span class="text-danger">✘ fehlt</span>' ?></li>
-                <li>error.log: <?= file_exists('error.log') ? '<span class="text-success">✔︎ vorhanden</span>' : '<span class="text-danger">✘ fehlt</span>' ?></li>
-            </ul>
-
-            <div class="mt-4">
-                <a href="admin.php" class="btn btn-outline-secondary">Zurück zum Admin-Dashboard</a>
-            </div>
-        </div>
+    <div class="mt-4">
+        <a href="admin_tab_mailtest.php" class="btn btn-outline-secondary btn-sm">Mail-Testseite</a>
+        <a href="admin_tab_status.php" class="btn btn-outline-secondary btn-sm">Zurück zu Systemstatus</a>
     </div>
 </div>
 </body>

@@ -1,32 +1,25 @@
 <?php
-// Datei: admin_tab_status.php – Stand: 2025-04-22 11:50 Europe/Berlin
+// Datei: admin_tab_status.php – Stand: 2025-04-23 11:51 Europe/Berlin
 
 date_default_timezone_set('Europe/Berlin');
+require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth.php';
 requireRole('admin');
 
-$env = __DIR__ . '/.env';
-$envContent = file_exists($env) ? file_get_contents($env) : 'Datei .env nicht vorhanden.';
+$db = new PDO('sqlite:users.db');
+$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-function readableSize($bytes) {
-    $size = ['B','KB','MB','GB','TB'];
-    $factor = floor((strlen($bytes) - 1) / 3);
-    return sprintf("%.1f", $bytes / pow(1024, $factor)) . " " . $size[$factor];
-}
-
-$stats = [
-    'PHP-Version' => phpversion(),
-    'PHP-SAPI' => php_sapi_name(),
-    'Betriebssystem' => PHP_OS,
-    'Aktueller Benutzer' => get_current_user(),
-    'Zeitzone' => date_default_timezone_get(),
-    'Datum/Zeit' => date("Y-m-d H:i:s"),
-    'users.db' => file_exists('users.db') ? readableSize(filesize('users.db')) : 'nicht vorhanden',
-    'audit.log' => file_exists('audit.log') ? readableSize(filesize('audit.log')) : 'nicht vorhanden',
-    'error.log' => file_exists('error.log') ? readableSize(filesize('error.log')) : 'nicht vorhanden'
-];
+$userCount = $db->query("SELECT COUNT(*) FROM users")->fetchColumn();
+$linkRequestCount = $db->query("SELECT COUNT(*) FROM link_requests WHERE status = 'open'")->fetchColumn();
+$linkCount = $db->query("SELECT COUNT(*) FROM user_links")->fetchColumn();
+$inactiveUsers = $db->query("SELECT COUNT(*) FROM users WHERE active = 0")->fetchColumn();
+$adminCount = $db->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn();
+$logAudit = file_exists("audit.log") ? round(filesize("audit.log") / 1024, 1) . ' KB' : 'nicht vorhanden';
+$logError = file_exists("error.log") ? round(filesize("error.log") / 1024, 1) . ' KB' : 'nicht vorhanden';
+$phpVersion = phpversion();
+$serverSoftware = $_SERVER['SERVER_SOFTWARE'] ?? 'unbekannt';
+$os = php_uname();
 ?>
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -35,72 +28,45 @@ $stats = [
     <link href="assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-<div class="container-fluid mt-4">
-    <?php include __DIR__ . '/admin_tab_nav.php'; ?>
+<div class="container-fluid mt-4" style="max-width: 100%;">
+    <?php if (file_exists(__DIR__ . '/admin_tab_nav.php')) include __DIR__ . '/admin_tab_nav.php'; ?>
+
     <h4 class="mb-4">Systemstatus</h4>
 
-    <div class="table-responsive mb-4">
-        <table class="table table-sm table-bordered bg-white">
-            <thead class="table-light"><tr><th>Parameter</th><th>Wert</th></tr></thead>
-            <tbody>
-                <?php foreach ($stats as $key => $val): ?>
-                <tr>
-                    <td><?= htmlspecialchars($key) ?></td>
-                    <td><?= htmlspecialchars($val) ?></td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-        </div>
-
-        <h6>Datenbanktabellen (users.db)</h6>
-        <div class="bg-white border rounded p-3 small mb-4">
-        <?php
-        try {
-            $tables = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")->fetchAll(PDO::FETCH_COLUMN);
-            echo '<ul class="mb-0">';
-            foreach ($tables as $t) {
-                echo '<li>' . htmlspecialchars($t) . '</li>';
-            }
-            echo '</ul>';
-        } catch (Exception $e) {
-            echo 'Fehler beim Lesen der Tabellen: ' . htmlspecialchars($e->getMessage());
-        }
-        ?>
-        </div>
-
-        <h6>Letzte Zeilen aus audit.log und error.log</h6>
-        <div class="row small">
+    <div class="bg-white border p-3 rounded small">
+        <div class="row">
             <div class="col-md-6">
-                <div class="bg-white border p-2 mb-3"><strong>audit.log</strong><br>
-                <pre style="max-height:200px; overflow:auto;"><?php
-                if (file_exists('audit.log')) {
-                    $lines = array_slice(file('audit.log'), -10);
-                    echo htmlspecialchars(implode('', $lines));
-                } else {
-                    echo 'audit.log nicht gefunden.';
-                }
-                ?></pre>
-                </div>
+                <h6>Datenbank</h6>
+                <ul>
+                    <li><strong>Benutzer insgesamt:</strong> <?= $userCount ?></li>
+                    <li><strong>Inaktive Benutzer:</strong> <?= $inactiveUsers ?></li>
+                    <li><strong>Admin-Benutzer:</strong> <?= $adminCount ?></li>
+                    <li><strong>Gespeicherte Links:</strong> <?= $linkCount ?></li>
+                    <li><strong>Offene Linkanfragen:</strong> <?= $linkRequestCount ?></li>
+                </ul>
             </div>
             <div class="col-md-6">
-                <div class="bg-white border p-2 mb-3"><strong>error.log</strong><br>
-                <pre style="max-height:200px; overflow:auto;"><?php
-                if (file_exists('error.log')) {
-                    $lines = array_slice(file('error.log'), -10);
-                    echo htmlspecialchars(implode('', $lines));
-                } else {
-                    echo 'error.log nicht gefunden.';
-                }
-                ?></pre>
-                </div>
+                <h6>System</h6>
+                <ul>
+                    <li><strong>PHP-Version:</strong> <?= $phpVersion ?></li>
+                    <li><strong>Server-Software:</strong> <?= $serverSoftware ?></li>
+                    <li><strong>Betriebssystem:</strong> <?= $os ?></li>
+                    <li><strong>Server-Zeit:</strong> <?= date('Y-m-d H:i') ?></li>
+                </ul>
             </div>
         </div>
+
+        <h6 class="mt-3">Logdateien</h6>
+        <ul>
+            <li>audit.log: <?= $logAudit ?></li>
+            <li>error.log: <?= $logError ?></li>
+        </ul>
     </div>
 
-    <h6>.env-Datei</h6>
-    <pre class="bg-white border p-3 small" style="max-height: 300px; overflow: auto;"><?= htmlspecialchars($envContent) ?></pre>
+    <div class="d-flex justify-content-start gap-2 mt-4">
+        <a href="admin_status_mailsystem.php" class="btn btn-outline-secondary btn-sm">Mail-System</a>
+        <a href="admin_userdump.php" class="btn btn-outline-secondary btn-sm">Benutzerdatenbank</a>
+    </div>
 </div>
-<a href="admin_status_mailsystem.php" class="btn btn-outline-secondary btn-sm">Mail-Systemstatus</a>
 </body>
 </html>

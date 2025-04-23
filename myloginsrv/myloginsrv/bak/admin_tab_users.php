@@ -1,10 +1,9 @@
 <?php
-// Datei: admin_tab_users.php – Stand: 2025-04-23 11:04 Europe/Berlin
+// Datei: admin_tab_users.php – Stand: 2025-04-22 16:09 Europe/Berlin
 
 date_default_timezone_set('Europe/Berlin');
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/mailer_config.php';
 requireRole('admin');
 
 $db = new PDO('sqlite:users.db');
@@ -30,70 +29,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 $db->prepare("UPDATE users SET password = :p WHERE id = :id")->execute([':p' => $hash, ':id' => $id]);
             }
-            file_put_contents("audit.log", date('c') . " Benutzer ID $id aktualisiert durch " . ($_SESSION['user'] ?? 'system') . "
-", FILE_APPEND);
             $info = "Benutzer ID $id aktualisiert.";
         } elseif ($action === 'delete' && $id > 0) {
             $db->prepare("DELETE FROM users WHERE id = :id")->execute([':id' => $id]);
-            file_put_contents("audit.log", date('c') . " Benutzer ID $id gelöscht durch " . ($_SESSION['user'] ?? 'system') . "
-", FILE_APPEND);
             $info = "Benutzer gelöscht.";
         } elseif ($action === 'add') {
             if ($username && $email && $password) {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $db->prepare("INSERT INTO users (username, password, email, role, active) VALUES (:u, :p, :e, :r, :a)");
                 $stmt->execute([':u' => $username, ':p' => $hash, ':e' => $email, ':r' => $role, ':a' => $active]);
-                file_put_contents("audit.log", date('c') . " Neuer Benutzer '$username' angelegt durch " . ($_SESSION['user'] ?? 'system') . "
-", FILE_APPEND);
                 $info = "Neuer Benutzer '$username' wurde angelegt.";
-                file_put_contents("audit.log", date('c') . " Neuer Benutzer '$username' wurde angelegt durch " . ($_SESSION['user'] ?? 'system') . "\n", FILE_APPEND);
-
-                if (!empty($email) && class_exists('PHPMailer\PHPMailer\PHPMailer')) {
-                    $mail = getMailer($email, "Willkommen bei MyLoginSrv");
-                    if ($mail) {
-                        $mail->Body = "Hallo $username,\n\nDein Zugang wurde vom Administrator eingerichtet.\n\nLogin: http://localhost:8080/login.php\n\nViele Grüße";
-                        try {
-                            $mail->send();
-                            file_put_contents("audit.log", date('c') . " Willkommensmail an $email gesendet\n", FILE_APPEND);
-                        } catch (Exception $e) {
-                            file_put_contents("error.log", date('c') . " Fehler beim Senden an $email: " . $mail->ErrorInfo . "\n", FILE_APPEND);
-                        }
-                    }
-                }
-
-                if (!empty($email) && class_exists('PHPMailer\PHPMailer\PHPMailer')) {
-                    $mail = getMailer($email, "Willkommen bei MyLoginSrv");
-                    if ($mail) {
-                        $mail->Body = "Hallo $username,
-
-Dein Zugang wurde vom Administrator eingerichtet.
-
-Login: http://localhost:8080/login.php
-
-Viele Grüße";
-                        try {
-                            $mail->send();
-                            file_put_contents("audit.log", date('c') . " Willkommensmail an $email gesendet
-", FILE_APPEND);
-                        } catch (Exception $e) {
-                            file_put_contents("error.log", date('c') . " Fehler beim Senden an $email: " . $mail->ErrorInfo . "
-", FILE_APPEND);
-                        }
-                    }
-                }
             } else {
                 $error = "Bitte Benutzername, Passwort und E-Mail angeben.";
             }
         }
     } catch (Exception $e) {
         $error = "Fehler: " . $e->getMessage();
-        file_put_contents("error.log", date('c') . " Fehler in admin_tab_users.php: " . $e->getMessage() . "
-", FILE_APPEND);
     }
 }
 
 $users = $db->query("SELECT * FROM users ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
 ?>
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -183,4 +140,3 @@ $users = $db->query("SELECT * FROM users ORDER BY id")->fetchAll(PDO::FETCH_ASSO
 </div>
 </body>
 </html>
-

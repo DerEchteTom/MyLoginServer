@@ -1,55 +1,51 @@
 <?php
-// Datei: admin_userdump.php
-session_start();
+// Datei: admin_userdump.php – Stand: 2025-04-23 11:54 Europe/Berlin
 
-if (!isset($_SESSION['user']) || ($_SESSION['role'] ?? '') !== 'admin') {
-    header("Location: login.php");
-    exit;
-}
+date_default_timezone_set('Europe/Berlin');
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/auth.php';
+requireRole('admin');
 
 $db = new PDO('sqlite:users.db');
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$users = $db->query("SELECT * FROM users ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+$rows = $db->query("SELECT id, username, email, role, active FROM users ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>User-Dump</title>
+    <title>Benutzerdatenbank</title>
     <link href="assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-<div class="container mt-5">
-    <h4>Debug: Benutzer-Datenbank</h4>
-    <table class="table table-bordered table-sm">
-        <thead class="table-light">
-            <tr>
-                <th>ID</th>
-                <th>Username</th>
-                <th>E-Mail</th>
-                <th>Rolle</th>
-                <th>Aktiv</th>
-                <th>Redirects</th>
-                <th>Token</th>
-                <th>Ablauf</th>
-            </tr>
-        </thead>
-        <tbody>
-        <?php foreach ($users as $u): ?>
-            <tr>
-                <td><?= $u['id'] ?></td>
-                <td><?= htmlspecialchars($u['username']) ?></td>
-                <td><?= htmlspecialchars($u['email']) ?></td>
-                <td><?= $u['role'] ?></td>
-                <td><?= $u['active'] ? '✔' : '✖' ?></td>
-                <td><?= htmlspecialchars($u['redirect_urls']) ?></td>
-                <td><?= $u['reset_token'] ?? '' ?></td>
-                <td><?= $u['reset_expires'] ?? '' ?></td>
-            </tr>
-        <?php endforeach; ?>
-        </tbody>
-    </table>
-    <a href="admin.php" class="btn btn-secondary">Zurück</a>
+<div class="container-fluid mt-4" style="max-width: 100%;">
+    <?php if (file_exists(__DIR__ . '/admin_tab_nav.php')) include __DIR__ . '/admin_tab_nav.php'; ?>
+
+    <h4 class="mb-4">Benutzerdatenbank anzeigen</h4>
+
+    <div class="table-responsive bg-white border rounded p-3 small">
+        <table class="table table-sm table-bordered table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <?php if (!empty($rows[0])): ?>
+                        <?php foreach (array_keys($rows[0]) as $col): ?>
+                            <th><?= htmlspecialchars($col) ?></th>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($rows as $row): ?>
+                    <tr>
+                        <?php foreach ($row as $val): ?>
+                            <td><?= htmlspecialchars((string)$val) ?></td>
+                        <?php endforeach; ?>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
 </div>
 </body>
 </html>
