@@ -1,12 +1,10 @@
 <?php
-// Datei: mailer_config.php
+// Datei: mailer_config.php – Stand: 2025-04-23 06:53 Europe/Berlin
 
 require_once __DIR__ . '/vendor/autoload.php';
 use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
-/**
- * .env-Datei manuell einlesen (ohne Dotenv)
- */
 function parseEnvFile($file) {
     if (!file_exists($file)) return;
     foreach (file($file) as $line) {
@@ -18,84 +16,63 @@ function parseEnvFile($file) {
 }
 parseEnvFile(__DIR__ . '/.env');
 
-/**
- * Debug-Infos aus der .env anzeigen
- */
 function debugSMTPEnv() {
     return [
-        'SMTP_HOST'               => getenv('SMTP_HOST'),
-        'SMTP_PORT'               => getenv('SMTP_PORT'),
-        'SMTP_FROM'               => getenv('SMTP_FROM'),
-        'SMTP_SECURE'             => getenv('SMTP_SECURE'),
-        'SMTP_AUTH'               => getenv('SMTP_AUTH'),
-        'SMTP_USER'               => getenv('SMTP_USER'),
-        'SMTP_PASS'               => getenv('SMTP_PASS'),
-        'ADMIN_EMAIL'             => getenv('ADMIN_EMAIL'),
-        'MAIL_TRUST_SELF_SIGNED'  => getenv('MAIL_TRUST_SELF_SIGNED')
+        'SMTP_HOST'   => getenv('SMTP_HOST'),
+        'SMTP_PORT'   => getenv('SMTP_PORT'),
+        'SMTP_FROM'   => getenv('SMTP_FROM'),
+        'SMTP_SECURE' => getenv('SMTP_SECURE'),
+        'SMTP_AUTH'   => getenv('SMTP_AUTH'),
+        'SMTP_USER'   => getenv('SMTP_USER'),
+        'SMTP_PASS'   => getenv('SMTP_PASS'),
+        'ADMIN_EMAIL' => getenv('ADMIN_EMAIL')
     ];
 }
 
-/**
- * Liefert konfiguriertes PHPMailer-Objekt
- */
 function getMailer(string $to, string $subject): ?PHPMailer {
     $host   = getenv('SMTP_HOST');
     $port   = getenv('SMTP_PORT');
     $from   = getenv('SMTP_FROM');
-    $auth   = strtolower(trim(getenv('SMTP_AUTH') ?? '')) === 'on';
-    $secureRaw = strtolower(trim(getenv('SMTP_SECURE') ?? ''));
-    $secure = in_array($secureRaw, ['ssl', 'tls']) ? $secureRaw : '';
-    $trustSelfSigned = strtolower(getenv('MAIL_TRUST_SELF_SIGNED') ?? '') === 'on';
+    $secure = strtolower(getenv('SMTP_SECURE') ?? '');
+    $auth   = strtolower(getenv('SMTP_AUTH') ?? '') === 'on';
 
-    // Validierung
-    if (!in_array($secureRaw, ['ssl', 'tls', 'none', '']) && $secureRaw !== '') {
-        file_put_contents("error.log", date('c') . " ⚠️ Ungültiger SMTP_SECURE-Wert in .env: '$secureRaw'. Fallback: keine Verschlüsselung\n", FILE_APPEND);
+    if (!in_array($secure, ['', 'ssl', 'tls'])) {
+        file_put_contents("error.log", date('c') . " ⚠️ Ungültiger Wert für SMTP_SECURE in .env: $secure\n", FILE_APPEND);
+        $secure = '';
     }
 
     if (!$host || !$port || !$from) {
-        file_put_contents("error.log", date('c') . " ❌ SMTP unvollständig – Host=$host, Port=$port, From=$from\n", FILE_APPEND);
+        file_put_contents("error.log", date('c') . " ❌ SMTP-Parameter unvollständig – Mailversand abgebrochen\n", FILE_APPEND);
         return null;
     }
 
-    $mail = new PHPMailer(true);
-    // Debugging aktivieren
-    $mail->SMTPDebug = 2;
-    $mail->Debugoutput = function($str, $level) {
-        file_put_contents("error.log", date('c') . " [SMTPDebug] $str\n", FILE_APPEND);
-    };
+    try {
+        $mail = new PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host = $host;
+        $mail->Port = $port;
+        $mail->setFrom($from);
+        $mail->addAddress($to);
+        $mail->Subject = $subject;
+        $mail->isHTML(false);
 
-    $mail->isSMTP();
-    $mail->Host = $host;
-    $mail->Port = $port;
-    $mail->setFrom($from);
-    $mail->addAddress($to);
-    $mail->isHTML(false);
-    $mail->Subject = $subject;
-
-    if ($secure) {
-        $mail->SMTPSecure = $secure;
-    }
-
-    $mail->SMTPAuth = $auth;
-
-    if ($auth) {
-        $user = getenv('SMTP_USER');
-        $pass = getenv('SMTP_PASS');
-        if ($user && $pass) {
-            $mail->Username = $user;
-            $mail->Password = $pass;
+        if ($secure) {
+            $mail->SMTPSecure = $secure;
         }
-    }
 
-    if ($trustSelfSigned) {
-        $mail->SMTPOptions = [
-            'ssl' => [
-                'verify_peer'       => false,
-                'verify_peer_name'  => false,
-                'allow_self_signed' => true
-            ]
-        ];
-    }
+        $mail->SMTPAuth = $auth;
+        if ($auth) {
+            $user = getenv('SMTP_USER');
+            $pass = getenv('SMTP_PASS');
+            if ($user && $pass) {
+                $mail->Username = $user;
+                $mail->Password = $pass;
+            }
+        }
 
-    return $mail;
+        return $mail;
+    } catch (Exception $e) {
+        file_put_contents("error.log", date('c') . " ❌ Fehler beim Initialisieren von PHPMailer: " . $e->getMessage() . "\n", FILE_APPEND);
+        return null;
+    }
 }

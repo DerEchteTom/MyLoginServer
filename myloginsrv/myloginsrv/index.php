@@ -23,8 +23,6 @@ session_start();
 
             <div class="d-grid gap-2">
                 <a href="login.php" class="btn btn-primary">Login</a>
-                <a href="register.php" class="btn btn-outline-secondary">Registrieren</a>
-                <a href="forgot.php" class="btn btn-outline-warning">Passwort vergessen</a>
                 <?php if (isset($_SESSION['user']) && ($_SESSION['role'] ?? '') === 'admin'): ?>
                     <a href="admin.php" class="btn btn-outline-info">Adminbereich</a>
                 <?php endif; ?>
