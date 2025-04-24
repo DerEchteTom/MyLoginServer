@@ -1,9 +1,10 @@
 <?php
-// Datei: admin_tab_users.php – Stand: 2025-04-22 16:09 Europe/Berlin
+// Datei: admin_tab_users.php – Stand: 2025-04-23 11:04 Europe/Berlin
 
 date_default_timezone_set('Europe/Berlin');
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/mailer_config.php';
 requireRole('admin');
 
 $db = new PDO('sqlite:users.db');
@@ -29,28 +30,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 $db->prepare("UPDATE users SET password = :p WHERE id = :id")->execute([':p' => $hash, ':id' => $id]);
             }
+            file_put_contents("audit.log", date('c') . " Benutzer ID $id aktualisiert durch " . ($_SESSION['user'] ?? 'system') . "
+", FILE_APPEND);
             $info = "Benutzer ID $id aktualisiert.";
         } elseif ($action === 'delete' && $id > 0) {
             $db->prepare("DELETE FROM users WHERE id = :id")->execute([':id' => $id]);
+            file_put_contents("audit.log", date('c') . " Benutzer ID $id gelöscht durch " . ($_SESSION['user'] ?? 'system') . "
+", FILE_APPEND);
             $info = "Benutzer gelöscht.";
         } elseif ($action === 'add') {
             if ($username && $email && $password) {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $db->prepare("INSERT INTO users (username, password, email, role, active) VALUES (:u, :p, :e, :r, :a)");
                 $stmt->execute([':u' => $username, ':p' => $hash, ':e' => $email, ':r' => $role, ':a' => $active]);
+                file_put_contents("audit.log", date('c') . " Neuer Benutzer '$username' angelegt durch " . ($_SESSION['user'] ?? 'system') . "
+", FILE_APPEND);
                 $info = "Neuer Benutzer '$username' wurde angelegt.";
+                file_put_contents("audit.log", date('c') . " Neuer Benutzer '$username' wurde angelegt durch " . ($_SESSION['user'] ?? 'system') . "\n", FILE_APPEND);
+
+                if (!empty($email) && class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+                    $mail = getMailer($email, "Willkommen bei MyLoginSrv");
+                    if ($mail) {
+                        $mail->Body = "Hallo $username,\n\nDein Zugang wurde vom Administrator eingerichtet.\n\nLogin: http://localhost:8080/login.php\n\nViele Grüße";
+                        try {
+                            $mail->send();
+                            file_put_contents("audit.log", date('c') . " Willkommensmail an $email gesendet\n", FILE_APPEND);
+                        } catch (Exception $e) {
+                            file_put_contents("error.log", date('c') . " Fehler beim Senden an $email: " . $mail->ErrorInfo . "\n", FILE_APPEND);
+                        }
+                    }
+                }
+
+                if (!empty($email) && class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+                    $mail = getMailer($email, "Willkommen bei MyLoginSrv");
+                    if ($mail) {
+                        $mail->Body = "Hallo $username,
+
+Dein Zugang wurde vom Administrator eingerichtet.
+
+Login: http://localhost:8080/login.php
+
+Viele Grüße";
+                        try {
+                            $mail->send();
+                            file_put_contents("audit.log", date('c') . " Willkommensmail an $email gesendet
+", FILE_APPEND);
+                        } catch (Exception $e) {
+                            file_put_contents("error.log", date('c') . " Fehler beim Senden an $email: " . $mail->ErrorInfo . "
+", FILE_APPEND);
+                        }
+                    }
+                }
             } else {
                 $error = "Bitte Benutzername, Passwort und E-Mail angeben.";
             }
         }
     } catch (Exception $e) {
         $error = "Fehler: " . $e->getMessage();
+        file_put_contents("error.log", date('c') . " Fehler in admin_tab_users.php: " . $e->getMessage() . "
+", FILE_APPEND);
     }
 }
 
-$users = $db->query("SELECT * FROM users ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+try {
+    $users = $db->query("SELECT * FROM users ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $ex) {
+    $users = [];
+    file_put_contents("error.log", date("c") . " Fehler beim Abruf der Benutzer: " . $ex->getMessage() . "\n", FILE_APPEND);
+}
 ?>
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -67,7 +115,12 @@ $users = $db->query("SELECT * FROM users ORDER BY id")->fetchAll(PDO::FETCH_ASSO
     <?php if ($info): ?><div class="alert alert-success small"><?= htmlspecialchars($info) ?></div><?php endif; ?>
     <?php if ($error): ?><div class="alert alert-danger small"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
-    <!-- Benutzer hinzufügen -->
+    <!-- Benutzer importieren -->
+<div class="bg-white border rounded p-3 mb-4">
+    <?php include __DIR__ . '/admin_upload_users.php'; ?>
+</div>
+
+<!-- Benutzer hinzufügen -->
     <form method="post" class="bg-white border rounded p-3 mb-3">
         <div class="row gx-2 gy-1 mb-1">
             <div class="col">
@@ -84,7 +137,10 @@ $users = $db->query("SELECT * FROM users ORDER BY id")->fetchAll(PDO::FETCH_ASSO
             </div>
             <div class="col">
                 <label class="form-label small mb-0">Rolle</label>
-                <select name="role" class="form-select form-select-sm">
+                <?php if ($u['id'] == 1): ?>
+                    <input type="hidden" name="role" value="admin">
+                    <div class="form-control-plaintext small">Admin</div>
+                <?php else: ?>
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
                 </select>
@@ -111,27 +167,38 @@ $users = $db->query("SELECT * FROM users ORDER BY id")->fetchAll(PDO::FETCH_ASSO
         <div class="col-2 text-end">Aktion</div>
     </div>
 
-    <?php foreach ($users as $u): ?>
+    <?php if (!empty($users)): foreach ($users as $u): ?>
         <form method="post" class="bg-light border rounded p-2 mb-2">
-            <input type="hidden" name="id" value="<?= $u['id'] ?>">
+                <?php if (isset($u['id'])): ?>
+            <input type="hidden" name="id" value="<?= isset($u['id']) ? (int)$u['id'] : 0 ?>">
+                <?php endif; ?>
             <div class="row gx-2 gy-1 align-items-center">
+                <?php if (isset($u['id'])): ?>
                 <div class="col-1 text-muted"><?= $u['id'] ?></div>
+                <?php endif; ?>
                 <div class="col"><input type="text" name="username" class="form-control form-control-sm" value="<?= htmlspecialchars($u['username']) ?>"></div>
                 <div class="col"><input type="email" name="email" class="form-control form-control-sm" value="<?= htmlspecialchars($u['email']) ?>"></div>
                 <div class="col"><input type="password" name="password" class="form-control form-control-sm" placeholder="Passwort (leer = bleibt)"></div>
                 <div class="col">
-                    <select name="role" class="form-select form-select-sm">
+                <?php if ($u['id'] == 1): ?>
+                    <input type="hidden" name="role" value="admin">
+                    <div class="form-control-plaintext small">Admin</div>
+                <?php else: ?>
                         <option value="user" <?= $u['role'] === 'user' ? 'selected' : '' ?>>User</option>
                         <option value="admin" <?= $u['role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
                     </select>
                 </div>
                 <div class="col text-center">
-                    <input type="checkbox" name="active" value="1" <?= $u['active'] ? 'checked' : '' ?>>
+                    <input type="checkbox" name="active" value="1" <?= isset($u['active']) && $u['active'] ? 'checked' : '' ?>>
                 </div>
                 <div class="col-2 text-end">
                     <button type="submit" name="action" value="save" class="btn btn-sm btn-outline-primary">Speichern</button>
                     <?php if ($u['username'] !== 'admin'): ?>
+                    <?php if ($u['id'] != 1): ?>
+                    <?php if ($u['id'] != 1): ?>
                         <button type="submit" name="action" value="delete" class="btn btn-sm btn-outline-danger">Löschen</button>
+                    <?php endif; ?>
+                    <?php endif; ?>
                     <?php endif; ?>
                 </div>
             </div>
@@ -140,3 +207,4 @@ $users = $db->query("SELECT * FROM users ORDER BY id")->fetchAll(PDO::FETCH_ASSO
 </div>
 </body>
 </html>
+
