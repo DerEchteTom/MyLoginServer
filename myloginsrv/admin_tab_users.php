@@ -1,5 +1,5 @@
 <?php
-// Datei: admin_tab_users.php – Stand: 2025-04-23 11:04 Europe/Berlin
+// Datei: admin_tab_users.php – Stand: 2025-04-24 11:45 Uhr Europe/Berlin
 
 date_default_timezone_set('Europe/Berlin');
 require_once __DIR__ . '/config.php';
@@ -30,23 +30,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 $db->prepare("UPDATE users SET password = :p WHERE id = :id")->execute([':p' => $hash, ':id' => $id]);
             }
-            file_put_contents("audit.log", date('c') . " Benutzer ID $id aktualisiert durch " . ($_SESSION['user'] ?? 'system') . "
-", FILE_APPEND);
+            file_put_contents("audit.log", date('c') . " Benutzer ID $id aktualisiert durch " . ($_SESSION['user'] ?? 'system') . "\n", FILE_APPEND);
             $info = "Benutzer ID $id aktualisiert.";
-        } elseif ($action === 'delete' && $id > 0) {
+        } elseif ($action === 'delete' && $id > 0 && $id != 1) {
             $db->prepare("DELETE FROM users WHERE id = :id")->execute([':id' => $id]);
-            file_put_contents("audit.log", date('c') . " Benutzer ID $id gelöscht durch " . ($_SESSION['user'] ?? 'system') . "
-", FILE_APPEND);
+            file_put_contents("audit.log", date('c') . " Benutzer ID $id gelöscht durch " . ($_SESSION['user'] ?? 'system') . "\n", FILE_APPEND);
             $info = "Benutzer gelöscht.";
         } elseif ($action === 'add') {
             if ($username && $email && $password) {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $db->prepare("INSERT INTO users (username, password, email, role, active) VALUES (:u, :p, :e, :r, :a)");
                 $stmt->execute([':u' => $username, ':p' => $hash, ':e' => $email, ':r' => $role, ':a' => $active]);
-                file_put_contents("audit.log", date('c') . " Neuer Benutzer '$username' angelegt durch " . ($_SESSION['user'] ?? 'system') . "
-", FILE_APPEND);
-                $info = "Neuer Benutzer '$username' wurde angelegt.";
                 file_put_contents("audit.log", date('c') . " Neuer Benutzer '$username' wurde angelegt durch " . ($_SESSION['user'] ?? 'system') . "\n", FILE_APPEND);
+                $info = "Neuer Benutzer '$username' wurde angelegt.";
 
                 if (!empty($email) && class_exists('PHPMailer\PHPMailer\PHPMailer')) {
                     $mail = getMailer($email, "Willkommen bei MyLoginSrv");
@@ -60,45 +56,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                 }
-
-                if (!empty($email) && class_exists('PHPMailer\PHPMailer\PHPMailer')) {
-                    $mail = getMailer($email, "Willkommen bei MyLoginSrv");
-                    if ($mail) {
-                        $mail->Body = "Hallo $username,
-
-Dein Zugang wurde vom Administrator eingerichtet.
-
-Login: http://localhost:8080/login.php
-
-Viele Grüße";
-                        try {
-                            $mail->send();
-                            file_put_contents("audit.log", date('c') . " Willkommensmail an $email gesendet
-", FILE_APPEND);
-                        } catch (Exception $e) {
-                            file_put_contents("error.log", date('c') . " Fehler beim Senden an $email: " . $mail->ErrorInfo . "
-", FILE_APPEND);
-                        }
-                    }
-                }
             } else {
                 $error = "Bitte Benutzername, Passwort und E-Mail angeben.";
             }
         }
     } catch (Exception $e) {
         $error = "Fehler: " . $e->getMessage();
-        file_put_contents("error.log", date('c') . " Fehler in admin_tab_users.php: " . $e->getMessage() . "
-", FILE_APPEND);
+        file_put_contents("error.log", date('c') . " Fehler in admin_tab_users.php: " . $e->getMessage() . "\n", FILE_APPEND);
     }
 }
 
+// Suche und Paging
+$search = trim($_GET['search'] ?? '');
+$page = max(1, (int)($_GET['page'] ?? 1));
+$limit = 10;
+$offset = ($page - 1) * $limit;
+
 try {
-    $users = $db->query("SELECT * FROM users ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+    $totalStmt = $db->prepare("SELECT COUNT(*) FROM users WHERE username LIKE :s OR email LIKE :s");
+    $totalStmt->execute([':s' => "%$search%"]);
+    $total = $totalStmt->fetchColumn();
+
+    $stmt = $db->prepare("SELECT * FROM users WHERE username LIKE :s OR email LIKE :s ORDER BY id LIMIT :l OFFSET :o");
+    $stmt->bindValue(':s', "%$search%", PDO::PARAM_STR);
+    $stmt->bindValue(':l', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':o', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $ex) {
     $users = [];
     file_put_contents("error.log", date("c") . " Fehler beim Abruf der Benutzer: " . $ex->getMessage() . "\n", FILE_APPEND);
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -115,12 +105,10 @@ try {
     <?php if ($info): ?><div class="alert alert-success small"><?= htmlspecialchars($info) ?></div><?php endif; ?>
     <?php if ($error): ?><div class="alert alert-danger small"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
-    <!-- Benutzer importieren -->
-<div class="bg-white border rounded p-3 mb-4">
-    <?php include __DIR__ . '/admin_upload_users.php'; ?>
-</div>
-
-<!-- Benutzer hinzufügen -->
+    <!-- Suche -->
+    <div class="bg-white border rounded p-3 mb-4">
+        <?php include __DIR__ . '/admin_upload_users.php'; ?>
+    <!-- Benutzer hinzufügen -->
     <form method="post" class="bg-white border rounded p-3 mb-3">
         <div class="row gx-2 gy-1 mb-1">
             <div class="col">
@@ -137,10 +125,7 @@ try {
             </div>
             <div class="col">
                 <label class="form-label small mb-0">Rolle</label>
-                <?php if ($u['id'] == 1): ?>
-                    <input type="hidden" name="role" value="admin">
-                    <div class="form-control-plaintext small">Admin</div>
-                <?php else: ?>
+                <select name="role" class="form-select form-select-sm">
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
                 </select>
@@ -155,6 +140,8 @@ try {
             </div>
         </div>
     </form>
+    
+    </div>
 
     <!-- Bestehende Benutzer -->
     <div class="row gx-2 gy-1 small text-muted mb-1 fw-bold">
@@ -167,44 +154,59 @@ try {
         <div class="col-2 text-end">Aktion</div>
     </div>
 
-    <?php if (!empty($users)): foreach ($users as $u): ?>
+    <?php if (!empty($users)): foreach ($users as $u): if (!isset($u['id']) || !is_numeric($u['id'])) continue; ?>
         <form method="post" class="bg-light border rounded p-2 mb-2">
-                <?php if (isset($u['id'])): ?>
-            <input type="hidden" name="id" value="<?= isset($u['id']) ? (int)$u['id'] : 0 ?>">
-                <?php endif; ?>
+            <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
             <div class="row gx-2 gy-1 align-items-center">
-                <?php if (isset($u['id'])): ?>
                 <div class="col-1 text-muted"><?= $u['id'] ?></div>
-                <?php endif; ?>
                 <div class="col"><input type="text" name="username" class="form-control form-control-sm" value="<?= htmlspecialchars($u['username']) ?>"></div>
                 <div class="col"><input type="email" name="email" class="form-control form-control-sm" value="<?= htmlspecialchars($u['email']) ?>"></div>
                 <div class="col"><input type="password" name="password" class="form-control form-control-sm" placeholder="Passwort (leer = bleibt)"></div>
                 <div class="col">
-                <?php if ($u['id'] == 1): ?>
-                    <input type="hidden" name="role" value="admin">
-                    <div class="form-control-plaintext small">Admin</div>
-                <?php else: ?>
-                        <option value="user" <?= $u['role'] === 'user' ? 'selected' : '' ?>>User</option>
-                        <option value="admin" <?= $u['role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
-                    </select>
+                    <?php if ($u['id'] == 1): ?>
+                        <input type="hidden" name="role" value="admin">
+                        <div class="form-control-plaintext small">Admin</div>
+                    <?php else: ?>
+                        <select name="role" class="form-select form-select-sm">
+                            <option value="user" <?= $u['role'] === 'user' ? 'selected' : '' ?>>User</option>
+                            <option value="admin" <?= $u['role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
+                        </select>
+                    <?php endif; ?>
                 </div>
                 <div class="col text-center">
-                    <input type="checkbox" name="active" value="1" <?= isset($u['active']) && $u['active'] ? 'checked' : '' ?>>
+                    <?php if ($u['id'] == 1): ?>
+                        <input type="hidden" name="active" value="1">
+                        <div class="form-control-plaintext small text-center">immer aktiv</div>
+                    <?php else: ?>
+                        <input type="checkbox" name="active" value="1" <?= $u['active'] ? 'checked' : '' ?>>
+                    <?php endif; ?>
                 </div>
                 <div class="col-2 text-end">
                     <button type="submit" name="action" value="save" class="btn btn-sm btn-outline-primary">Speichern</button>
-                    <?php if ($u['username'] !== 'admin'): ?>
-                    <?php if ($u['id'] != 1): ?>
-                    <?php if ($u['id'] != 1): ?>
+                    <?php if ($u['id'] != 1 && $u['username'] !== 'admin'): ?>
                         <button type="submit" name="action" value="delete" class="btn btn-sm btn-outline-danger">Löschen</button>
-                    <?php endif; ?>
-                    <?php endif; ?>
                     <?php endif; ?>
                 </div>
             </div>
         </form>
-    <?php endforeach; ?>
+    <?php endforeach; endif; ?>
+
+    <!-- Paging -->
+    <div class="mt-3">
+        <?php if ($total > $limit): ?>
+            <?php $totalPages = ceil($total / $limit); ?>
+            <nav>
+                <ul class="pagination pagination-sm">
+                    <?php if ($page > 1): ?>
+                        <li class="page-item"><a class="page-link" href="?search=<?= urlencode($search) ?>&page=<?= $page - 1 ?>">&laquo; Zurück</a></li>
+                    <?php endif; ?>
+                    <?php if ($page < $totalPages): ?>
+                        <li class="page-item"><a class="page-link" href="?search=<?= urlencode($search) ?>&page=<?= $page + 1 ?>">Weiter &raquo;</a></li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+        <?php endif; ?>
+    </div>
 </div>
 </body>
 </html>
-

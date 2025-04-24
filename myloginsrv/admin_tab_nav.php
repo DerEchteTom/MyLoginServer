@@ -14,16 +14,14 @@ $inactiveCount = $db->query("SELECT COUNT(*) FROM users WHERE active = 0")->fetc
         <a href="admin_tab_users.php" class="btn btn-outline-secondary btn-sm">
             Benutzerverwaltung
             <?php if ($inactiveCount > 0): ?>
-                <span class="badge bg-warning text-dark ms-1"><?= $inactiveCount ?></span>
+                <span class="badge bg-secondary-subtle text-dark ms-2"><?= $inactiveCount ?></span>
             <?php endif; ?>
         </a>
         <a href="admin_tab_links.php" class="btn btn-outline-secondary btn-sm">Benutzer-Links</a>
         <a href="admin_tab_linkrequests.php" class="btn btn-outline-secondary btn-sm">
             Linkanfragen
             <?php if ($count > 0): ?>
-                <span class="badge bg-dark"><?= $count ?></span>
-            <?php else: ?>
-                <span class="badge bg-light text-dark border">0</span>
+                <span class="badge bg-secondary-subtle text-dark ms-2"><?= $count ?></span>
             <?php endif; ?>
         </a>
         <a href="admin_tab_logs.php" class="btn btn-outline-secondary btn-sm">Logdateien</a>

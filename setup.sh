@@ -92,6 +92,17 @@ else
   echo "✅ PHPMailer ist bereits installiert."
 fi
 
+echo "🔌 Installiere PHP-LDAP-Modul manuell ..."
+docker exec "$PHP_CONTAINER" bash -c "
+  apt-get update &&
+  apt-get install -y libldap2-dev && \
+  docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
+  docker-php-ext-install ldap && \
+  echo '✅ LDAP-Modul erfolgreich installiert.'
+"
+
+
+
 # Benutzerimport aus JSON-Datei
 if [ -f "$IMPORT_FILE" ]; then
   read -p "👤 Benutzer aus '$IMPORT_FILE' importieren? (y/n): " import_confirm
