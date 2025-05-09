@@ -1,212 +1,251 @@
 <?php
-// Datei: admin_tab_users.php – Stand: 2025-04-24 11:45 Uhr Europe/Berlin
+// Datei: admin_tab_users.php
+// Version: 2025-04-26_01
+// Beschreibung: Benutzerverwaltung (Upload, Suche, Bearbeiten, Willkommensmail)
+
+require_once "auth.php";
+requireRole('admin');
+require_once "mailer_config.php";
 
 date_default_timezone_set('Europe/Berlin');
-require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/mailer_config.php';
-requireRole('admin');
 
+// DB-Verbindung
 $db = new PDO('sqlite:users.db');
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $info = '';
 $error = '';
 
+// ========= POST-VERARBEITUNG =========
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = (int)($_POST['id'] ?? 0);
     $action = $_POST['action'] ?? '';
-    $username = trim($_POST['username'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
-    $role = $_POST['role'] ?? 'user';
-    $active = isset($_POST['active']) ? 1 : 0;
 
-    try {
-        if ($action === 'save' && $id > 0) {
+    // Benutzer importieren aus JSON-Datei
+    if (isset($_FILES['userfile']) && is_uploaded_file($_FILES['userfile']['tmp_name'])) {
+        $data = json_decode(file_get_contents($_FILES['userfile']['tmp_name']), true);
+        if (is_array($data)) {
+            try {
+                $db->beginTransaction();
+                $imported = 0;
+                foreach ($data as $user) {
+                    $username = trim($user['username'] ?? '');
+                    $email = trim($user['email'] ?? '');
+                    if ($username && $email) {
+                        $check = $db->prepare("SELECT COUNT(*) FROM users WHERE username = :u");
+                        $check->execute([':u' => $username]);
+                        if ($check->fetchColumn() == 0) {
+                            $stmt = $db->prepare("INSERT INTO users (username, email, password, role, active) VALUES (:u, :e, '', 'user', 0)");
+                            $stmt->execute([':u' => $username, ':e' => $email]);
+                            $imported++;
+                        }
+                    }
+                }
+                $db->commit();
+                $info = "$imported Benutzer erfolgreich importiert.";
+            } catch (Exception $e) {
+                $db->rollBack();
+                $error = "Fehler beim Import: " . $e->getMessage();
+            }
+        } else {
+            $error = "Fehler: Ungültiges JSON-Format.";
+        }
+    }
+
+    // Bestehenden Benutzer speichern
+    if ($action === 'save' && $id) {
+        $username = trim($_POST['username'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $password = $_POST['password'] ?? '';
+        $role = $_POST['role'] ?? 'user';
+        $active = isset($_POST['active']) ? 1 : 0;
+
+        if ($username && $email) {
             $stmt = $db->prepare("UPDATE users SET username = :u, email = :e, role = :r, active = :a WHERE id = :id");
             $stmt->execute([':u' => $username, ':e' => $email, ':r' => $role, ':a' => $active, ':id' => $id]);
+
             if (!empty($password)) {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
-                $db->prepare("UPDATE users SET password = :p WHERE id = :id")->execute([':p' => $hash, ':id' => $id]);
+                $db->prepare("UPDATE users SET password = :p WHERE id = :id")
+                   ->execute([':p' => $hash, ':id' => $id]);
             }
-            file_put_contents("audit.log", date('c') . " Benutzer ID $id aktualisiert durch " . ($_SESSION['user'] ?? 'system') . "\n", FILE_APPEND);
-            $info = "Benutzer ID $id aktualisiert.";
-        } elseif ($action === 'delete' && $id > 0 && $id != 1) {
-            $db->prepare("DELETE FROM users WHERE id = :id")->execute([':id' => $id]);
-            file_put_contents("audit.log", date('c') . " Benutzer ID $id gelöscht durch " . ($_SESSION['user'] ?? 'system') . "\n", FILE_APPEND);
-            $info = "Benutzer gelöscht.";
-        } elseif ($action === 'add') {
+
+            file_put_contents('audit.log', date('c') . " Benutzer ID $id aktualisiert\n", FILE_APPEND);
+            header("Location: " . $_SERVER['PHP_SELF']);
+            exit;
+        }
+    }
+
+    // Benutzer löschen
+    if ($action === 'delete' && $id && $id != 1) {
+        $db->prepare("DELETE FROM users WHERE id = :id")->execute([':id' => $id]);
+        file_put_contents('audit.log', date('c') . " Benutzer ID $id gelöscht\n", FILE_APPEND);
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
+    }
+
+    // Neuen Benutzer anlegen
+    if ($action === 'add') {
+        $username = trim($_POST['new_username'] ?? '');
+        $email = trim($_POST['new_email'] ?? '');
+        $password = $_POST['new_password'] ?? '';
+        $role = $_POST['new_role'] ?? 'user';
+        $active = isset($_POST['new_active']) ? 1 : 0;
+
+        $check = $db->prepare("SELECT COUNT(*) FROM users WHERE username = :u");
+        $check->execute([':u' => $username]);
+        if ($check->fetchColumn() > 0) {
+            $error = "Benutzername '$username' ist bereits vergeben.";
+        } else {
             if ($username && $email && $password) {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $db->prepare("INSERT INTO users (username, password, email, role, active) VALUES (:u, :p, :e, :r, :a)");
                 $stmt->execute([':u' => $username, ':p' => $hash, ':e' => $email, ':r' => $role, ':a' => $active]);
-                file_put_contents("audit.log", date('c') . " Neuer Benutzer '$username' wurde angelegt durch " . ($_SESSION['user'] ?? 'system') . "\n", FILE_APPEND);
-                $info = "Neuer Benutzer '$username' wurde angelegt.";
 
-                if (!empty($email) && class_exists('PHPMailer\PHPMailer\PHPMailer')) {
-                    $mail = getMailer($email, "Willkommen bei MyLoginSrv");
-                    if ($mail) {
-                        $mail->Body = "Hallo $username,\n\nDein Zugang wurde vom Administrator eingerichtet.\n\nLogin: http://localhost:8080/login.php\n\nViele Grüße";
-                        try {
-                            $mail->send();
-                            file_put_contents("audit.log", date('c') . " Willkommensmail an $email gesendet\n", FILE_APPEND);
-                        } catch (Exception $e) {
-                            file_put_contents("error.log", date('c') . " Fehler beim Senden an $email: " . $mail->ErrorInfo . "\n", FILE_APPEND);
-                        }
+                file_put_contents('audit.log', date('c') . " Neuer Benutzer $username hinzugefügt\n", FILE_APPEND);
+
+                // Willkommensmail senden
+                $server = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                $mail = getMailer($email, "Willkommen bei MyLoginServer");
+                if ($mail) {
+                    $mail->Body = "Hallo $username,\n\nDein Zugang wurde erstellt.\n\nLogin-Adresse: http://$server/login.php\n\nMit freundlichen Gruessen.\n";
+                    try {
+                        $mail->send();
+                    } catch (Exception $e) {
+                        file_put_contents('error.log', date('c') . " Fehler beim Willkommensmail an $email: " . $mail->ErrorInfo . "\n", FILE_APPEND);
                     }
                 }
-            } else {
-                $error = "Bitte Benutzername, Passwort und E-Mail angeben.";
+
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit;
             }
         }
-    } catch (Exception $e) {
-        $error = "Fehler: " . $e->getMessage();
-        file_put_contents("error.log", date('c') . " Fehler in admin_tab_users.php: " . $e->getMessage() . "\n", FILE_APPEND);
     }
 }
-
-// Suche und Paging
-$search = trim($_GET['search'] ?? '');
-$page = max(1, (int)($_GET['page'] ?? 1));
-$limit = 10;
-$offset = ($page - 1) * $limit;
-
-try {
-    $totalStmt = $db->prepare("SELECT COUNT(*) FROM users WHERE username LIKE :s OR email LIKE :s");
-    $totalStmt->execute([':s' => "%$search%"]);
-    $total = $totalStmt->fetchColumn();
-
-    $stmt = $db->prepare("SELECT * FROM users WHERE username LIKE :s OR email LIKE :s ORDER BY id LIMIT :l OFFSET :o");
-    $stmt->bindValue(':s', "%$search%", PDO::PARAM_STR);
-    $stmt->bindValue(':l', $limit, PDO::PARAM_INT);
-    $stmt->bindValue(':o', $offset, PDO::PARAM_INT);
-    $stmt->execute();
-    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $ex) {
-    $users = [];
-    file_put_contents("error.log", date("c") . " Fehler beim Abruf der Benutzer: " . $ex->getMessage() . "\n", FILE_APPEND);
-}
+// ========== POST-VERARBEITUNG ENDE ==========
 ?>
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <title>Benutzerverwaltung</title>
-    <link href="assets/css/bootstrap.min.css" rel="stylesheet">
+    <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body class="bg-light">
 <div class="container-fluid mt-4">
-    <?php if (file_exists(__DIR__ . '/admin_tab_nav.php')) include __DIR__ . '/admin_tab_nav.php'; ?>
 
-    <h4 class="mb-4">Benutzerverwaltung</h4>
+<?php include "admin_tab_nav.php"; ?>
 
-    <?php if ($info): ?><div class="alert alert-success small"><?= htmlspecialchars($info) ?></div><?php endif; ?>
-    <?php if ($error): ?><div class="alert alert-danger small"><?= htmlspecialchars($error) ?></div><?php endif; ?>
+<h4 class="mb-4">Benutzerverwaltung</h4>
 
-    <!-- Suche -->
-    <div class="bg-white border rounded p-3 mb-4">
-        <?php include __DIR__ . '/admin_upload_users.php'; ?>
-    <!-- Benutzer hinzufügen -->
-    <form method="post" class="bg-white border rounded p-3 mb-3">
-        <div class="row gx-2 gy-1 mb-1">
-            <div class="col">
-                <label class="form-label small mb-0">Benutzername</label>
-                <input type="text" name="username" class="form-control form-control-sm" required>
-            </div>
-            <div class="col">
-                <label class="form-label small mb-0">E-Mail</label>
-                <input type="email" name="email" class="form-control form-control-sm" required>
-            </div>
-            <div class="col">
-                <label class="form-label small mb-0">Passwort</label>
-                <input type="password" name="password" class="form-control form-control-sm" required>
-            </div>
-            <div class="col">
-                <label class="form-label small mb-0">Rolle</label>
-                <select name="role" class="form-select form-select-sm">
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                </select>
-            </div>
-            <div class="col text-center">
-                <label class="form-label small mb-0 d-block">Aktiv</label>
-                <input type="checkbox" name="active" value="1" checked>
-            </div>
-            <div class="col">
-                <label class="form-label small mb-0">&nbsp;</label>
-                <button type="submit" name="action" value="add" class="btn btn-sm btn-outline-success w-100">Hinzufügen</button>
-            </div>
-        </div>
-    </form>
-    
-    </div>
+<!-- Erfolg- und Fehlermeldungen -->
+<?php if (!empty($info)): ?>
+    <div class="alert alert-success"><?= htmlspecialchars($info) ?></div>
+<?php endif; ?>
+<?php if (!empty($error)): ?>
+    <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+<?php endif; ?>
 
-    <!-- Bestehende Benutzer -->
-    <div class="row gx-2 gy-1 small text-muted mb-1 fw-bold">
-        <div class="col-1">ID</div>
-        <div class="col">Benutzername</div>
-        <div class="col">E-Mail</div>
-        <div class="col">Passwort</div>
-        <div class="col">Rolle</div>
-        <div class="col text-center">Aktiv</div>
-        <div class="col-2 text-end">Aktion</div>
-    </div>
-
-    <?php if (!empty($users)): foreach ($users as $u): if (!isset($u['id']) || !is_numeric($u['id'])) continue; ?>
-        <form method="post" class="bg-light border rounded p-2 mb-2">
-            <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
-            <div class="row gx-2 gy-1 align-items-center">
-                <div class="col-1 text-muted"><?= $u['id'] ?></div>
-                <div class="col"><input type="text" name="username" class="form-control form-control-sm" value="<?= htmlspecialchars($u['username']) ?>"></div>
-                <div class="col"><input type="email" name="email" class="form-control form-control-sm" value="<?= htmlspecialchars($u['email']) ?>"></div>
-                <div class="col"><input type="password" name="password" class="form-control form-control-sm" placeholder="Passwort (leer = bleibt)"></div>
-                <div class="col">
-                    <?php if ($u['id'] == 1): ?>
-                        <input type="hidden" name="role" value="admin">
-                        <div class="form-control-plaintext small">Admin</div>
-                    <?php else: ?>
-                        <select name="role" class="form-select form-select-sm">
-                            <option value="user" <?= $u['role'] === 'user' ? 'selected' : '' ?>>User</option>
-                            <option value="admin" <?= $u['role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
-                        </select>
-                    <?php endif; ?>
-                </div>
-                <div class="col text-center">
-                    <?php if ($u['id'] == 1): ?>
-                        <input type="hidden" name="active" value="1">
-                        <div class="form-control-plaintext small text-center">immer aktiv</div>
-                    <?php else: ?>
-                        <input type="checkbox" name="active" value="1" <?= $u['active'] ? 'checked' : '' ?>>
-                    <?php endif; ?>
-                </div>
-                <div class="col-2 text-end">
-                    <button type="submit" name="action" value="save" class="btn btn-sm btn-outline-primary">Speichern</button>
-                    <?php if ($u['id'] != 1 && $u['username'] !== 'admin'): ?>
-                        <button type="submit" name="action" value="delete" class="btn btn-sm btn-outline-danger">Löschen</button>
-                    <?php endif; ?>
-                </div>
-            </div>
+<!-- Upload- und Suchbereich -->
+<div class="row g-2 align-items-center mb-4">
+    <div class="col-auto">
+        <form method="post" enctype="multipart/form-data" class="d-flex align-items-center">
+            <input type="file" name="userfile" accept=".json" class="form-control form-control-sm me-2">
+            <button type="submit" class="btn btn-sm btn-primary">Importieren</button>
         </form>
-    <?php endforeach; endif; ?>
-
-    <!-- Paging -->
-    <div class="mt-3">
-        <?php if ($total > $limit): ?>
-            <?php $totalPages = ceil($total / $limit); ?>
-            <nav>
-                <ul class="pagination pagination-sm">
-                    <?php if ($page > 1): ?>
-                        <li class="page-item"><a class="page-link" href="?search=<?= urlencode($search) ?>&page=<?= $page - 1 ?>">&laquo; Zurück</a></li>
-                    <?php endif; ?>
-                    <?php if ($page < $totalPages): ?>
-                        <li class="page-item"><a class="page-link" href="?search=<?= urlencode($search) ?>&page=<?= $page + 1 ?>">Weiter &raquo;</a></li>
-                    <?php endif; ?>
-                </ul>
-            </nav>
-        <?php endif; ?>
+    </div>
+    <div class="col-auto d-none d-md-block">
+        <div style="width: 20px;"></div>
+    </div>
+    <div class="col">
+        <form method="get" class="d-flex justify-content-end">
+            <input type="text" name="search" value="<?= htmlspecialchars($_GET['search'] ?? '') ?>"
+                   class="form-control form-control-sm me-2" placeholder="Suche Benutzer/E-Mail">
+            <button type="submit" class="btn btn-sm btn-secondary">Suchen</button>
+        </form>
     </div>
 </div>
+
+<!-- Benutzerliste -->
+<div class="table-responsive bg-white rounded shadow-sm p-3">
+<table class="table table-sm table-hover align-middle">
+<thead class="table-light">
+<tr>
+    <th>ID</th>
+    <th>Benutzername</th>
+    <th>E-Mail</th>
+    <th>Passwort</th>
+    <th>Rolle</th>
+    <th>Aktiv</th>
+    <th>Aktionen</th>
+</tr>
+</thead>
+<tbody>
+<?php
+$search = trim($_GET['search'] ?? '');
+$stmt = $db->prepare("SELECT * FROM users WHERE username LIKE :s OR email LIKE :s ORDER BY id ASC");
+$stmt->execute([':s' => "%$search%"]);
+$users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+foreach ($users as $u):
+?>
+<tr>
+    <form method="post">
+    <td><?= htmlspecialchars($u['id']) ?></td>
+    <td><input type="text" name="username" value="<?= htmlspecialchars($u['username']) ?>" class="form-control form-control-sm"></td>
+    <td><input type="email" name="email" value="<?= htmlspecialchars($u['email']) ?>" class="form-control form-control-sm"></td>
+    <td><input type="password" name="password" placeholder="(neu optional)" class="form-control form-control-sm"></td>
+    <td>
+        <select name="role" class="form-select form-select-sm">
+            <option value="user" <?= $u['role'] === 'user' ? 'selected' : '' ?>>User</option>
+            <option value="admin" <?= $u['role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
+        </select>
+    </td>
+    <td class="text-center">
+        <input type="checkbox" name="active" value="1" <?= $u['active'] ? 'checked' : '' ?>>
+    </td>
+    <td>
+        <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
+        <button type="submit" name="action" value="save" class="btn btn-sm btn-outline-success">Speichern</button>
+        <?php if ($u['id'] != 1): ?>
+            <button type="submit" name="action" value="delete" class="btn btn-sm btn-outline-danger">Löschen</button>
+        <?php endif; ?>
+    </td>
+    </form>
+</tr>
+<?php endforeach; ?>
+</tbody>
+</table>
+</div>
+
+<!-- Neuen Benutzer anlegen -->
+<div class="bg-white border rounded p-3 mt-4">
+    <h5>Neuen Benutzer hinzufügen</h5>
+    <form method="post" class="row g-2 align-items-center">
+        <div class="col-md-2">
+            <input type="text" name="new_username" placeholder="Benutzername" required class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3">
+            <input type="email" name="new_email" placeholder="E-Mail" required class="form-control form-control-sm">
+        </div>
+        <div class="col-md-2">
+            <input type="password" name="new_password" placeholder="Passwort" required class="form-control form-control-sm">
+        </div>
+        <div class="col-md-2">
+            <select name="new_role" class="form-select form-select-sm">
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+        <div class="col-md-1 text-center">
+            <input type="checkbox" name="new_active" value="1" checked>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" name="action" value="add" class="btn btn-sm btn-outline-success w-100">Anlegen</button>
+        </div>
+    </form>
+</div>
+
+</div> <!-- container -->
 </body>
 </html>

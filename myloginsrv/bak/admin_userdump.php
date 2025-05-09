@@ -4,7 +4,6 @@
 date_default_timezone_set('Europe/Berlin');
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth.php';
-requireRole('admin');
 
 $db = new PDO('sqlite:users.db');
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
