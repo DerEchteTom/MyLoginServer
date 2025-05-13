@@ -1,16 +1,15 @@
 <?php
-// Datei: register.php – Mail über config_support.php – Stand: 2025-05-09 Europe/Berlin
+// Datei: register_lowercase.php – lowercase-Normalisierung – Stand: 2025-05-13 Europe/Berlin
 
 date_default_timezone_set('Europe/Berlin');
-//require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/config_support.php';
 
 $info = '';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
-    $email = trim($_POST['email'] ?? '');
+    $username = strtolower(trim($_POST['username'] ?? ''));
+    $email = strtolower(trim($_POST['email'] ?? ''));
     $password = $_POST['password'] ?? '';
 
     if ($username && $email && $password) {
@@ -34,19 +33,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($mail && $email) {
                     $mail->addAddress($email);
                     $mail->Subject = "Willkommen bei MyLoginSrv";
-                    $mail->Body = "Hallo $username,\n\nDein Zugang wurde erstellt.\n\nSobald dein Zugang durch den Administrator freigeschaltet wurde, kannst du dich hier anmelden: http://$server/login.php\n\nMit freundlichen Gruessen.";
+                    $mail->Body = "Hallo $username,
+
+Dein Zugang wurde erstellt.
+
+Sobald dein Zugang durch den Administrator freigeschaltet wurde, kannst du dich hier anmelden: http://$server/login.php
+
+Mit freundlichen Grüßen.";
                     try {
                         $mail->send();
                         file_put_contents("audit.log", date('c') . " Willkommensmail an $email gesendet
 ", FILE_APPEND);
                     } catch (Exception $e) {
-                        file_put_contents("error.log", date('c') . " Fehler beim Senden an $email: " . $mail->ErrorInfo . "\n", FILE_APPEND);
+                        file_put_contents("error.log", date('c') . " Fehler beim Senden an $email: " . $mail->ErrorInfo . "
+", FILE_APPEND);
                     }
                 }
 
             } catch (Exception $e) {
                 $error = "Registrierung fehlgeschlagen: " . $e->getMessage();
-                file_put_contents("error.log", date("c") . " Fehler bei Registrierung $username: " . $e->getMessage() . "\n", FILE_APPEND);
+                file_put_contents("error.log", date("c") . " Fehler bei Registrierung $username: " . $e->getMessage() . "
+", FILE_APPEND);
             }
         }
     } else {
@@ -66,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container mt-5" style="max-width: 540px;">
     <div class="card border border-secondary bg-white">
         <div class="card-body">
-            <h5 class="mb-3 text-secondary">Registrieren</h4>
+            <h5 class="mb-3 text-secondary">Registrieren</h5>
             <?php if ($info): ?><div class="alert alert-success small"><?= htmlspecialchars($info) ?></div><?php endif; ?>
             <?php if ($error): ?><div class="alert alert-danger small"><?= htmlspecialchars($error) ?></div><?php endif; ?>
             <form method="post">
