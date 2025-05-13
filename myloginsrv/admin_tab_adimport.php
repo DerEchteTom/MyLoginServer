@@ -1,5 +1,5 @@
 <?php
-// Datei: admin_tab_adimport_lowercase.php – Version: 2025-05-13_lowercase
+// Datei: admin_tab_adimport_final.php – Final mit Design + Funktion – Stand: 2025-05-13 Europe/Berlin
 date_default_timezone_set('Europe/Berlin');
 require_once "auth.php";
 requireRole('admin');
@@ -118,85 +118,94 @@ Mit freundlichen Gruessen.";
     <meta charset="UTF-8">
     <title>AD-Benutzer importieren</title>
     <link href="assets/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        tr:hover td {
+            background-color: #f2f2f2;
+        }
+    </style>
 </head>
 <body class="bg-light">
 <div class="container-fluid mt-4">
 <?php include "admin_tab_nav.php"; ?>
-<h4>AD-Benutzer importieren</h4>
-<?php if ($notice): ?><div class="alert alert-success"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
-<?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
+<div style="width: 90%; margin: 0 auto;">
+    <h4>AD-Benutzer importieren</h4>
+    <?php if ($notice): ?><div class="alert alert-success"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
+    <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
-<?php if ($stage === 'select'): ?>
-<form method="post">
-    <input type="hidden" name="stage" value="preview">
-    <div class="mb-2 d-flex gap-2 align-items-center">
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleCheckboxes(true)">Alle auswählen</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleCheckboxes(false)">Alle abwählen</button>
-        <button type="submit" class="btn btn-outline-success btn-sm">Auswahl zur Vorschau</button>
-    </div>
-    <table class="table table-sm table-bordered bg-white">
-        <thead><tr><th>#</th><th>Benutzername</th><th>E-Mail</th><th>Auswahl</th></tr></thead>
-        <tbody>
-        <?php foreach ($users as $i => $u): ?>
-            <tr>
-                <td><?= $i + 1 ?></td>
-                <td><?= htmlspecialchars($u['username']) ?></td>
-                <td><?= htmlspecialchars($u['email']) ?></td>
-                <td>
-                    <input type="checkbox" name="selected[]" value="<?= $i ?>" checked>
-                    <input type="hidden" name="u[<?= $i ?>]" value="<?= htmlspecialchars($u['username']) ?>">
-                    <input type="hidden" name="e[<?= $i ?>]" value="<?= htmlspecialchars($u['email']) ?>">
-                </td>
-            </tr>
-        <?php endforeach; ?>
-        </tbody>
-    </table>
-</form>
-<script>
-function toggleCheckboxes(state) {
-    document.querySelectorAll('input[type=checkbox][name^="selected"]').forEach(cb => cb.checked = state);
-}
-</script>
+    <?php if ($stage === 'select'): ?>
+    <form method="post">
+        <input type="hidden" name="stage" value="preview">
+        <div class="mb-2 d-flex gap-2 align-items-center">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleCheckboxes(true)">Alle auswählen</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleCheckboxes(false)">Alle abwählen</button>
+            <button type="submit" class="btn btn-outline-success btn-sm">Auswahl zur Vorschau</button>
+        </div>
+        <table class="table table-sm table-bordered bg-white mx-auto" style="width: 100%;">
+            <thead><tr><th>#</th><th>Benutzername</th><th>E-Mail</th><th>Auswahl</th></tr></thead>
+            <tbody>
+            <?php foreach ($users as $i => $u): ?>
+                <tr>
+                    <td><?= $i + 1 ?></td>
+                    <td><?= htmlspecialchars($u['username']) ?></td>
+                    <td><?= htmlspecialchars($u['email']) ?></td>
+                    <td>
+                        <input type="checkbox" name="selected[]" value="<?= $i ?>" checked>
+                        <input type="hidden" name="u[<?= $i ?>]" value="<?= htmlspecialchars($u['username']) ?>">
+                        <input type="hidden" name="e[<?= $i ?>]" value="<?= htmlspecialchars($u['email']) ?>">
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </form>
+    <script>
+    function toggleCheckboxes(state) {
+        document.querySelectorAll('input[type=checkbox][name^="selected"]').forEach(cb => cb.checked = state);
+    }
+    </script>
 
-<?php elseif ($stage === 'preview' && $preview): ?>
-<form method="post">
-    <input type="hidden" name="stage" value="import">
-    <p>Bitte Benutzer prüfen, Rolle und Aktivierung wählen. Danach Import starten:</p>
-    <table class="table table-sm table-bordered bg-white">
-        <thead><tr><th>#</th><th>Benutzername</th><th>E-Mail</th><th>Rolle</th><th>Aktiv</th><th>Info E-Mail</th></tr></thead>
-        <tbody>
-        <?php foreach ($preview as $i => $u): ?>
-            <tr>
-                <td><?= $i + 1 ?></td>
-                <td>
-                    <?= htmlspecialchars($u['username']) ?>
-                    <input type="hidden" name="u[]" value="<?= htmlspecialchars($u['username']) ?>">
-                </td>
-                <td>
-                    <?= htmlspecialchars($u['email']) ?>
-                    <input type="hidden" name="e[]" value="<?= htmlspecialchars($u['email']) ?>">
-                </td>
-                <td>
-                    <select name="role[]" class="form-select form-select-sm">
-                        <option value="user">user</option>
-                        <option value="admin">admin</option>
-                    </select>
-                </td>
-                <td>
-                    <input type="checkbox" name="active[<?= $i ?>]" value="1" checked>
-                </td>
-                <td>
-                    <input type="checkbox" name="mail[<?= $i ?>]" value="1">
-                </td>
-            </tr>
-        <?php endforeach; ?>
-        </tbody>
-    </table>
-    <button type="submit" class="btn btn-outline-primary">Importieren</button>
-</form>
-<?php elseif ($stage === 'preview'): ?>
-<p class="text-muted">Keine gültigen Benutzer ausgewählt.</p>
-<?php endif; ?>
+    <?php elseif ($stage === 'preview' && $preview): ?>
+    <form method="post">
+        <input type="hidden" name="stage" value="import">
+        <p class="mb-2">Bitte Benutzer prüfen, Rolle und Aktivierung wählen. Danach Import starten:</p>
+        <table class="table table-sm table-bordered bg-white mx-auto" style="width: 100%;">
+            <thead><tr><th>#</th><th>Benutzername</th><th>E-Mail</th><th>Rolle</th><th>Aktiv</th><th>Info E-Mail</th></tr></thead>
+            <tbody>
+            <?php foreach ($preview as $i => $u): ?>
+                <tr>
+                    <td><?= $i + 1 ?></td>
+                    <td>
+                        <?= htmlspecialchars($u['username']) ?>
+                        <input type="hidden" name="u[]" value="<?= htmlspecialchars($u['username']) ?>">
+                    </td>
+                    <td>
+                        <?= htmlspecialchars($u['email']) ?>
+                        <input type="hidden" name="e[]" value="<?= htmlspecialchars($u['email']) ?>">
+                    </td>
+                    <td>
+                        <select name="role[]" class="form-select form-select-sm">
+                            <option value="user">user</option>
+                            <option value="admin">admin</option>
+                        </select>
+                    </td>
+                    <td>
+                        <input type="checkbox" name="active[<?= $i ?>]" value="1" checked>
+                    </td>
+                    <td>
+                        <input type="checkbox" name="mail[<?= $i ?>]" value="1">
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        <div class="mt-3">
+            <button type="submit" class="btn btn-outline-primary">Importieren</button>
+        </div>
+    </form>
+    <?php elseif ($stage === 'preview'): ?>
+    <p class="text-muted">Keine gültigen Benutzer ausgewählt.</p>
+    <?php endif; ?>
+</div>
 </div>
 </body>
 </html>
