@@ -1,7 +1,0 @@
-# Datei: Makefile – Ergänzung für Passwortverschlüsselung per Docker
-
-encrypt:
-	docker exec -it myloginsrv-php php /var/www/html/encrypt_env.php $(pass) $(key)
-
-# Beispiel:
-# make encrypt pass=MeinPasswort key=MeinGeheimerKey

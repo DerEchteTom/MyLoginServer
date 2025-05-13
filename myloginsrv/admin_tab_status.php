@@ -98,8 +98,8 @@ $username = $_SESSION['username'] ?? '-';
   <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light" style="font-size: 0.95rem;">
-<?php if (file_exists(__DIR__ . "/admin_tab_nav.php")) include __DIR__ . "/admin_tab_nav.php"; ?>
 <div class="container-fluid mt-4">
+<?php include "admin_tab_nav.php"; ?>
   <h5 class="mb-3">Systemstatus</h5>
 
   <div class="mb-3 text-dark fw-bold" style="font-size: 1.25rem;">

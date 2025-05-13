@@ -1,5 +1,5 @@
 <?php
-// Datei: admin_tab_adimport.php – Version: 2025-05-12_01 (2-Stufen-Import mit Vorschau)
+// Datei: admin_tab_adimport_lowercase.php – Version: 2025-05-13_lowercase
 date_default_timezone_set('Europe/Berlin');
 require_once "auth.php";
 requireRole('admin');
@@ -28,8 +28,8 @@ if ($conn) {
         if ($search) {
             $entries = ldap_get_entries($conn, $search);
             for ($i = 0; $i < $entries['count']; $i++) {
-                $uid = $entries[$i]['samaccountname'][0] ?? '';
-                $email = $entries[$i]['mail'][0] ?? '';
+                $uid = strtolower($entries[$i]['samaccountname'][0] ?? '');
+                $email = strtolower($entries[$i]['mail'][0] ?? '');
                 if ($uid && $email) {
                     $users[] = ['username' => $uid, 'email' => $email];
                 }
@@ -39,35 +39,74 @@ if ($conn) {
 }
 $db = new PDO('sqlite:users.db');
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$existing = $db->query("SELECT username FROM users")->fetchAll(PDO::FETCH_COLUMN);
-$users = array_values(array_filter($users, fn($u) => !in_array($u['username'], $existing)));
+$existing = $db->query("SELECT LOWER(username) FROM users")->fetchAll(PDO::FETCH_COLUMN);
+$users = array_values(array_filter($users, fn($u) => !in_array(strtolower($u['username']), $existing)));
 usort($users, fn($a, $b) => strcmp($a['username'], $b['username']));
 
-// Vorschau: Daten aus POST wiederherstellen
 if ($stage === 'preview' && isset($_POST['selected'])) {
     foreach ($_POST['selected'] as $idx) {
-        $username = $_POST['u'][$idx] ?? '';
-        $email = $_POST['e'][$idx] ?? '';
+        $username = strtolower($_POST['u'][$idx] ?? '');
+        $email = strtolower($_POST['e'][$idx] ?? '');
         if ($username && $email) {
             $preview[] = ['username' => $username, 'email' => $email];
         }
     }
 }
 
-// Importphase
 if ($stage === 'import' && isset($_POST['u'], $_POST['e'], $_POST['role'], $_POST['active'])) {
     $imported = 0;
+    $mails = $_POST['mail'] ?? [];
     foreach ($_POST['u'] as $i => $username) {
-        $email = $_POST['e'][$i];
+        $username = strtolower($username);
+        $email = strtolower($_POST['e'][$i]);
         $role = $_POST['role'][$i];
         $active = $_POST['active'][$i] == '1' ? 1 : 0;
+        $sendmail = isset($mails[$i]);
 
-        $stmt = $db->prepare("SELECT COUNT(*) FROM users WHERE username = :u");
+        $stmt = $db->prepare("SELECT COUNT(*) FROM users WHERE LOWER(username) = :u");
         $stmt->execute([':u' => $username]);
         if ($stmt->fetchColumn() == 0) {
             $stmt = $db->prepare("INSERT INTO users (username, email, role, active) VALUES (:u, :e, :r, :a)");
             $stmt->execute([':u' => $username, ':e' => $email, ':r' => $role, ':a' => $active]);
+            file_put_contents("audit.log", date("c") . " AD-Benutzer importiert: $username <$email> (Rolle: $role, Aktiv: $active)
+", FILE_APPEND);
             $imported++;
+
+            if (file_exists("default_links.json")) {
+                $json = json_decode(file_get_contents("default_links.json"), true);
+                foreach ($json as $entry) {
+                    $alias = strtolower($entry['alias'] ?? '');
+                    $url = strtolower($entry['url'] ?? '');
+                    if ($alias && $url) {
+                        $s = $db->prepare("INSERT INTO user_links (user_id, alias, url) VALUES ((SELECT id FROM users WHERE username = :u), :a, :l)");
+                        $s->execute([':u' => $username, ':a' => $alias, ':l' => $url]);
+                    }
+                }
+            }
+
+            if ($active && $sendmail && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $server = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                $mail = getConfiguredMailer();
+                if ($mail) {
+                    $mail->addAddress($email);
+                    $mail->Subject = "Willkommen bei MyLoginSrv";
+                    $mail->Body = "Hallo $username,
+
+Dein Zugang wurde erstellt.
+
+Sobald dein Zugang durch den Administrator freigeschaltet wurde, kannst du dich hier anmelden: http://$server/login.php
+
+Mit freundlichen Gruessen.";
+                    try {
+                        $mail->send();
+                        file_put_contents("audit.log", date('c') . " Willkommensmail an $email gesendet
+", FILE_APPEND);
+                    } catch (Exception $e) {
+                        file_put_contents("error.log", date('c') . " Fehler beim Senden an $email: " . $mail->ErrorInfo . "
+", FILE_APPEND);
+                    }
+                }
+            }
         }
     }
     $notice = "$imported Benutzer erfolgreich importiert.";
@@ -82,7 +121,6 @@ if ($stage === 'import' && isset($_POST['u'], $_POST['e'], $_POST['role'], $_POS
 </head>
 <body class="bg-light">
 <div class="container-fluid mt-4">
-
 <?php include "admin_tab_nav.php"; ?>
 <h4>AD-Benutzer importieren</h4>
 <?php if ($notice): ?><div class="alert alert-success"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
@@ -125,7 +163,7 @@ function toggleCheckboxes(state) {
     <input type="hidden" name="stage" value="import">
     <p>Bitte Benutzer prüfen, Rolle und Aktivierung wählen. Danach Import starten:</p>
     <table class="table table-sm table-bordered bg-white">
-        <thead><tr><th>#</th><th>Benutzername</th><th>E-Mail</th><th>Rolle</th><th>Aktiv</th></tr></thead>
+        <thead><tr><th>#</th><th>Benutzername</th><th>E-Mail</th><th>Rolle</th><th>Aktiv</th><th>Mail</th></tr></thead>
         <tbody>
         <?php foreach ($preview as $i => $u): ?>
             <tr>
@@ -147,6 +185,9 @@ function toggleCheckboxes(state) {
                 <td>
                     <input type="checkbox" name="active[<?= $i ?>]" value="1" checked>
                 </td>
+                <td>
+                    <input type="checkbox" name="mail[<?= $i ?>]" value="1">
+                </td>
             </tr>
         <?php endforeach; ?>
         </tbody>
@@ -156,5 +197,6 @@ function toggleCheckboxes(state) {
 <?php elseif ($stage === 'preview'): ?>
 <p class="text-muted">Keine gültigen Benutzer ausgewählt.</p>
 <?php endif; ?>
+</div>
 </body>
 </html>
