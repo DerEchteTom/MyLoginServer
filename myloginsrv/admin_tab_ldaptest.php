@@ -88,8 +88,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['username'], $_POST['p
     <title>LDAP-Test & Konfiguration</title>
     <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="container-fluid mt-4">
-<?php include 'admin_tab_nav.php'; ?>
+<body class="bg-light">
+<div class="container-fluid mt-4">
+
+<?php include "admin_tab_nav.php"; ?>
 <div class="container">
     <h3>LDAP-Login testen</h3>
 

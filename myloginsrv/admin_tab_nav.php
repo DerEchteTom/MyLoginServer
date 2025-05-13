@@ -17,6 +17,7 @@ $inactiveCount = $db->query("SELECT COUNT(*) FROM users WHERE active = 0")->fetc
                 <span class="badge bg-secondary-subtle text-dark ms-2"><?= $inactiveCount ?></span>
             <?php endif; ?>
         </a>
+        <a href="admin_tab_adimport.php" class="btn btn-outline-secondary btn-sm">AD Import</a>
         <a href="admin_tab_links.php" class="btn btn-outline-secondary btn-sm">Benutzer-Links</a>
         <a href="admin_tab_linkrequests.php" class="btn btn-outline-secondary btn-sm">
             Linkanfragen

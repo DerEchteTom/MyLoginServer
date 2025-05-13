@@ -80,8 +80,11 @@ if ($stage === 'import' && isset($_POST['u'], $_POST['e'], $_POST['role'], $_POS
     <title>AD-Benutzer importieren</title>
     <link href="assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="container-fluid mt-4">
-<h4>AD-Benutzer importieren (2-Stufen)</h4>
+<body class="bg-light">
+<div class="container-fluid mt-4">
+
+<?php include "admin_tab_nav.php"; ?>
+<h4>AD-Benutzer importieren</h4>
 <?php if ($notice): ?><div class="alert alert-success"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
 <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 

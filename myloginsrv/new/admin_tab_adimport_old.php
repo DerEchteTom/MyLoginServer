@@ -68,8 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import']) && isset($_
     <title>AD-Benutzer importieren</title>
     <link href="assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="container mt-4">
-<?php include 'admin_tab_nav.php'; ?>
+<body class="bg-light">
+<div class="container-fluid mt-4">
+
+<?php include "admin_tab_nav.php"; ?>
 <h4>AD-Benutzer importieren</h4>
 
 <?php if ($notice): ?><div class="alert alert-success"><?= htmlspecialchars($notice) ?></div><?php endif; ?>

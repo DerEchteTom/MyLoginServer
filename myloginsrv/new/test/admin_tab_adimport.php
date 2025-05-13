@@ -1,5 +1,5 @@
 <?php
-// Datei: admin_tab_adimport.php – Version: 2025-05-12_01 (2-Stufen-Import mit Vorschau)
+// Datei: admin_tab_adimport.php – Version: 2025-05-13_robust_final
 date_default_timezone_set('Europe/Berlin');
 require_once "auth.php";
 requireRole('admin');
@@ -57,17 +57,43 @@ if ($stage === 'preview' && isset($_POST['selected'])) {
 // Importphase
 if ($stage === 'import' && isset($_POST['u'], $_POST['e'], $_POST['role'], $_POST['active'])) {
     $imported = 0;
+    $mails = $_POST['mail'] ?? [];
     foreach ($_POST['u'] as $i => $username) {
         $email = $_POST['e'][$i];
         $role = $_POST['role'][$i];
         $active = $_POST['active'][$i] == '1' ? 1 : 0;
+        $sendmail = isset($mails[$i]);
 
         $stmt = $db->prepare("SELECT COUNT(*) FROM users WHERE username = :u");
         $stmt->execute([':u' => $username]);
         if ($stmt->fetchColumn() == 0) {
             $stmt = $db->prepare("INSERT INTO users (username, email, role, active) VALUES (:u, :e, :r, :a)");
             $stmt->execute([':u' => $username, ':e' => $email, ':r' => $role, ':a' => $active]);
+            logAction("audit.log", "AD-Benutzer $username importiert (Rolle: $role, Aktiv: $active)");
             $imported++;
+
+            // Links zuweisen
+            if (file_exists("default_links.json")) {
+                $json = json_decode(file_get_contents("default_links.json"), true);
+                foreach ($json as $entry) {
+                    $alias = $entry['alias'] ?? '';
+                    $url = $entry['url'] ?? '';
+                    if ($alias && $url) {
+                        $s = $db->prepare("INSERT INTO user_links (user_id, alias, url) VALUES ((SELECT id FROM users WHERE username = :u), :a, :l)");
+                        $s->execute([':u' => $username, ':a' => $alias, ':l' => $url]);
+                    }
+                }
+            }
+
+            // Mail senden
+            if ($active && $sendmail && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $result = sendUserMail($email, $username, 'willkommen');
+                if ($result === true) {
+                    logAction("audit.log", "Willkommensmail an $email gesendet");
+                } else {
+                    logAction("error.log", "Fehler beim Mailversand an $email: $result");
+                }
+            }
         }
     }
     $notice = "$imported Benutzer erfolgreich importiert.";
@@ -80,8 +106,10 @@ if ($stage === 'import' && isset($_POST['u'], $_POST['e'], $_POST['role'], $_POS
     <title>AD-Benutzer importieren</title>
     <link href="assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="container-fluid mt-4">
-<h4>AD-Benutzer importieren (2-Stufen)</h4>
+<body class="bg-light">
+<div class="container-fluid mt-4">
+<?php include "admin_tab_nav.php"; ?>
+<h4>AD-Benutzer importieren</h4>
 <?php if ($notice): ?><div class="alert alert-success"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
 <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
@@ -122,7 +150,7 @@ function toggleCheckboxes(state) {
     <input type="hidden" name="stage" value="import">
     <p>Bitte Benutzer prüfen, Rolle und Aktivierung wählen. Danach Import starten:</p>
     <table class="table table-sm table-bordered bg-white">
-        <thead><tr><th>#</th><th>Benutzername</th><th>E-Mail</th><th>Rolle</th><th>Aktiv</th></tr></thead>
+        <thead><tr><th>#</th><th>Benutzername</th><th>E-Mail</th><th>Rolle</th><th>Aktiv</th><th>Mail</th></tr></thead>
         <tbody>
         <?php foreach ($preview as $i => $u): ?>
             <tr>
@@ -144,6 +172,9 @@ function toggleCheckboxes(state) {
                 <td>
                     <input type="checkbox" name="active[<?= $i ?>]" value="1" checked>
                 </td>
+                <td>
+                    <input type="checkbox" name="mail[<?= $i ?>]" value="1">
+                </td>
             </tr>
         <?php endforeach; ?>
         </tbody>
@@ -153,5 +184,6 @@ function toggleCheckboxes(state) {
 <?php elseif ($stage === 'preview'): ?>
 <p class="text-muted">Keine gültigen Benutzer ausgewählt.</p>
 <?php endif; ?>
+</div>
 </body>
 </html>

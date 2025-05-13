@@ -66,8 +66,10 @@ $key = getEncryptionKey();
     <title>SMTP-Mailtest & Konfiguration</title>
     <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="container-fluid mt-4">
-<?php include 'admin_tab_nav.php'; ?>
+<body class="bg-light">
+<div class="container-fluid mt-4">
+
+<?php include "admin_tab_nav.php"; ?>
 <div class="container">
     <h3>SMTP-Test & Konfiguration</h3>
 

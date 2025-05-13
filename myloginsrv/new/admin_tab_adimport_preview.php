@@ -1,5 +1,5 @@
 <?php
-// Datei: admin_tab_adimport_preview.php – Vorschau & finaler Import – Version: 2025-05-10
+// Datei: admin_tab_adimport_preview.php – Vorschau & finaler Import – mit Logging & Redirect
 require_once 'auth.php';
 requireRole('admin');
 require_once 'config_support.php';
@@ -28,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['finalize_import'])) {
             $stmt->bindValue(':r', $role);
             $stmt->bindValue(':a', $active);
             $stmt->execute();
+            logAction("audit.log", "AD-Benutzer $username importiert (Rolle: $role, Aktiv: $active)");
             $count++;
 
             if ($withLinks && file_exists("default_links.json")) {
@@ -48,6 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['finalize_import'])) {
         }
     }
     $import_notice = "$count Benutzer importiert.";
+    if ($count == 0) {
+        logAction("error.log", "Kein Benutzer importiert – möglicherweise alle bereits vorhanden.");
+    }
 }
 
 $selected = $_POST['selected'] ?? [];
@@ -60,11 +64,15 @@ $emails = $_POST['email'] ?? [];
     <title>AD-Benutzer Import – Vorschau</title>
     <link href="assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="container mt-4">
+<body class="bg-light">
+<div class="container-fluid mt-4">
+
+<?php include "admin_tab_nav.php"; ?>
 <h4>Importvorschau</h4>
 
 <?php if ($import_notice): ?>
 <div class="alert alert-success"><?= htmlspecialchars($import_notice) ?></div>
+<script>setTimeout(() => { window.location.href = 'admin_tab_users.php'; }, 1500);</script>
 <?php endif; ?>
 
 <form method="post">
@@ -101,7 +109,7 @@ $emails = $_POST['email'] ?? [];
                     </select>
                 </td>
                 <td class="text-center">
-                    <input type="checkbox" name="active[]" value="<?= htmlspecialchars($username) ?>" checked>
+                    <input type="checkbox" name="active[]" value="<?= htmlspecialchars($username) ?>">
                 </td>
             </tr>
         <?php endforeach; ?>

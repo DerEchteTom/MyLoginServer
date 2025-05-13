@@ -56,7 +56,9 @@ foreach ($users as $username => $data) {
     <title>Import abgeschlossen</title>
     <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="container mt-4">
+<body class="bg-light">
+<div class="container-fluid mt-4">
+<?php include "admin_tab_nav.php"; ?>
     <div class="alert alert-success">
         ✅ <?= $imported ?> Benutzer wurden erfolgreich importiert.
     </div>
