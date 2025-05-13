@@ -77,7 +77,7 @@ else
 fi
 
 
-echoecho "----------------------------------------"
+echo "----------------------------------------"
 docker exec "$PHP_CONTAINER" bash -c "[ -d /var/www/html/vendor/phpmailer/phpmailer ]"
 if [ $? -ne 0 ]; then
   read -p "📧 PHPMailer nicht gefunden. Jetzt installieren? (y/n): " install_phpmailer
@@ -92,7 +92,7 @@ else
   echo "✅ PHPMailer ist bereits installiert."
 fi
 
-echoecho "----------------------------------------"
+echo "----------------------------------------"
 echo "🔌 Installiere PHP-LDAP-Modul manuell ..."
 docker exec "$PHP_CONTAINER" bash -c "
   apt-get update &&
@@ -124,26 +124,9 @@ echo -n "✅ Docker-Container myloginsrv-nginx: "
 docker ps --filter "name=myloginsrv-nginx" --format "{{.Status}}" || echo "❌ nicht gestartet?"
 echo "----------------------------------------"
 
-# Benutzerimport
-if [ -f "$IMPORT_FILE" ]; then
-  read -p "👤 Benutzer aus '$IMPORT_FILE' importieren? (y/n): " import_confirm
-  if [ "$import_confirm" = "y" ]; then
-    echo "📥 Importiere Benutzer..."
-    docker cp "$IMPORT_FILE" "$PHP_CONTAINER":/var/www/html/import_users.json
-    docker exec "$PHP_CONTAINER" php -r "
-      \$_FILES = ['import_file' => ['tmp_name' => 'import_users.json', 'error' => 0]];
-      include 'admin_userimport.php';
-    "
-  else
-    echo "⏭️ Benutzerimport übersprungen."
-  fi
-else
-  echo "ℹ️ Keine Importdatei '$IMPORT_FILE' gefunden – übersprungen."
-fi
-
 echo
 echo "📦 Aktuelle .envad-Konfiguration:"
-docker exec "$PHP_CONTAINER" bash -c "cat /var/www/html/.envad | grep -E '^SMTP_|^ADMIN_EMAIL=' || echo 'Keine .envad gefunden.'"
+docker exec "$PHP_CONTAINER" bash -c "cat /var/www/html/.envad | grep -E '^AD_|^AD_BIND=' || echo 'Keine .envad gefunden.'"
 
 
 # IP-Ausgabe am Ende

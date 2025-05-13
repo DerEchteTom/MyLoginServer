@@ -73,7 +73,7 @@ $key = getEncryptionKey();
 
     <form method="post" class="mb-3 d-flex gap-2">
         <input type="email" name="test_email" placeholder="E-Mail-Adresse" required class="form-control w-auto" style="min-width:320px">
-        <button type="submit" name="send_test" class="btn btn-primary">Testmail senden</button>
+        <button type="submit" name="send_test" class="btn btn-outline-primary">Testmail senden</button>
     </form>
     <?php if (!empty($test_notice)): ?>
         <div class="alert alert-info"><?= htmlspecialchars($test_notice) ?></div>
@@ -86,13 +86,17 @@ $key = getEncryptionKey();
     <form method="post" class="mb-3">
         <textarea name="env" rows="14" class="form-control font-monospace"><?= htmlspecialchars(file_get_contents($env_file)) ?></textarea>
         <div class="d-flex gap-2 mt-2">
-            <button type="submit" name="env_save" class="btn btn-secondary">Nur speichern</button>
-            <button type="submit" name="env_encrypt" class="btn btn-warning">Jetzt verschlüsseln</button>
+            <button type="submit" name="env_save" class="btn btn-outline-secondary">Nur speichern</button>
+            <button type="submit" name="env_encrypt" class="btn btn-outline-warning">Jetzt verschlüsseln</button>
         </div>
     </form>
 
-    <hr class="my-4">
-    <h5>Entschlüsselte ENV-Werte:</h5>
+
+
+<?php if (isset($_GET['showdec']) && $_GET['showdec'] === '1'): ?>
+<hr class="my-4">
+<button class="btn btn-outline-secondary mb-2" onclick="toggleDecrypted()">Entschlüsselte ENV-Werte anzeigen/verbergen</button>
+<div id="decrypted" style="display:none;">
     <table class="table table-bordered table-sm bg-light">
         <thead><tr><th>Schlüssel</th><th>Wert (entschlüsselt)</th></tr></thead>
         <tbody>
@@ -101,6 +105,18 @@ $key = getEncryptionKey();
         <?php endforeach; ?>
         </tbody>
     </table>
+</div>
+//  Zum Anzeigen <code>?showdec=1</code> an die URL anhängen.
+<script>
+function toggleDecrypted() {
+    const box = document.getElementById("decrypted");
+    box.style.display = box.style.display === "none" ? "block" : "none";
+}
+</script>
+<?php else: ?>
+    <p class="text-muted mt-3">Entschlüsselte ENV-Werte sind aktuell ausgeblendet.</p>
+<?php endif; ?>
+
 </div>
 </body>
 </html>

@@ -1,23 +1,32 @@
 # MyLoginServer
 
-Ein moderner, containerbasierter Login-Server zur Authentifizierung von Benutzern mit Admin-Dashboard, Benutzerverwaltung und Unterstützung für SMTP-Mail-Versand.
+Ein moderner, erweiterbarer Login-Server mit Admin-Dashboard, Benutzerverwaltung, AD-Anbindung und verschlüsseltem SMTP-Mailversand. Das System basiert auf einer schlanken PHP-/SQLite-Architektur und ist containerfähig (Docker).
 
 ---
 
 ## 🚀 Features
 
-- Benutzer-Login mit Session-Handling
-- Registrierung mit Passwort-Hashing
-- Passwort-Vergessen und Zurücksetzen (via Token + E-Mail)
-- Admin-Dashboard:
-  - Benutzer aktivieren/deaktivieren
-  - Benutzer anlegen
-  - Mail-Test via PHPMailer
-  - Anzeige des `audit.log`
-- `.env`-basierte Konfiguration für SMTP
-- Audit-Logging (Anmeldung, Reset, Aktionen)
-- Docker-Container für Webserver, PHP und Datenhaltung
-- Flache Verzeichnisstruktur – alles unter `myloginsrv/`
+- 🔐 Kombinierter Login:
+  - Lokale Benutzer mit Passwort
+  - Active Directory (AD)-Login via LDAP
+  - Inaktive AD-Benutzer werden automatisch lokal erfasst
+- 👤 Benutzerverwaltung im Adminbereich:
+  - Aktivierung, Rollenvergabe, Passwort-Reset
+  - Willkommensmail mit Login-Link
+  - Benutzer-Import via JSON
+- 🔗 Benutzerbezogene Linkverwaltung:
+  - Standard-Links pro Benutzer
+  - Benutzer können Linkvorschläge einreichen
+- ✉️ SMTP-Versand mit PHPMailer
+  - Konfiguration via `.env`
+  - Verschlüsselung sensibler Variablen
+  - Testmails direkt im Adminbereich
+- 🛠️ Debugging & Status:
+  - Debug-Ausgabe im Login optional sichtbar
+  - Debug-Fenster & Logfile-Erstellung
+  - Admin-Statusseite zeigt Systemdateien, PHP-Version, Verschlüsselungsstatus, PHPMailer-Zustand
+- 📦 Einfache Struktur & Bootstrap-Design
+- 🐳 Docker-fähig mit Installer `setup.sh`
 
 ---
 
@@ -28,39 +37,26 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-bei Startproblemen des Skriptes hilft eventuell:
+Falls nötig:
 
 ```bash
 sudo apt install dos2unix
 dos2unix setup.sh
 ```
 
-Das Script:
-
-- prüft Docker und Containerstatus
-- startet die Container mit `docker-compose up`
-- initialisiert die Datenbank (`users.db`)
-- vergibt nötige Rechte für Log und DB
-- versucht fehlende Pakete zu installieren
-- zeigt die lokale IP für Webzugriff
-
----
-
-## 📁 Verzeichnisse & Dateien
-
-- `setup.sh` – Installer und Rechte-Check
-- `users.db` – SQLite-Datenbank mit Audit- und Reset-Feldern
-- `audit.log` – alle sicherheitsrelevanten Aktionen
-- `*.php` – Frontend/Backend-Funktionen:
-  - `login.php`, `register.php`, `logout.php`
-  - `forgot.php`, `reset.php`
-  - `admin.php`, `admin_users.php`, `admin_mailtest.php`, `admin_logs.php`
+Das Skript:
+- prüft Docker-Installation
+- startet die Container
+- initialisiert die SQLite-Datenbank
+- legt `.env`, `audit.log`, `error.log` an
+- prüft PHPMailer & Composer
+- zeigt lokale IP zur Anmeldung
 
 ---
 
-## ✉️ SMTP konfigurieren
+## ✉️ SMTP-Konfiguration (.env)
 
-Die Datei `.env` steuert den Mail-Versand über PHPMailer:
+Beispiel:
 
 ```env
 SMTP_HOST=smtp.example.com
@@ -71,29 +67,45 @@ SMTP_AUTH=off
 ADMIN_EMAIL=admin@example.com
 ```
 
-Diese Werte können auch im Admin-Center unter „Mail-Test“ angepasst und gespeichert werden.
-Diese Variablen werden initial einmalig aus der Datei `.env.example` generiert.
+> Die Konfiguration kann im Adminbereich (Mail-Test) angezeigt, geändert und verschlüsselt werden. Eine Vorschaltdatei `.env.example` ist enthalten.
 
 ---
 
-## 🧪 Test
+## 🧪 Test & Login
 
-Besuche nach dem Setup:
-
-```
+```bash
 http://<deine-IP>:8080
 ```
 
-Login (Standard-Admin):
-- Benutzername: `admin`
-- Passwort: `adminpass`
+Erstanmeldung (nach Setup):
+- Benutzer: `admin`
+- Passwort: `adminpass` (oder wie in `setup.sh` gesetzt)
 
 ---
 
-## ℹ️ Weitere Hinweise
+## 🔐 Sicherheit
 
-- es wird versucht den PHPMailer automatisch zu installieren, wenn nicht vorhanden
-- `.env` wird beim Mail-Test im Adminbereich automatisch geladen nach erfolgreichem Senden aktualisiert
+- Passwort-Hashing mit bcrypt
+- Audit-Logging für Registrierung, Mailversand, Benutzeraktionen
+- Nur Admins dürfen admin-Dateien aufrufen (`requireRole('admin')`)
+- Ausnahme: `admin_tab_status.php` (frei zugänglich zur Diagnose)
+
+---
+
+## 🔄 Konfigurierbare Module
+
+- `.envad`: für AD-spezifische Einstellungen (verschlüsselbar)
+- `default_links.json`: Standard-Links bei Benutzeranlage
+- `config_support.php`: zentrale Mail- und Kryptofunktionen
+
+---
+
+## ℹ️ Hinweise
+
+- PHPMailer wird automatisch erkannt und getestet
+- Verschlüsselung basiert auf XOR, Key kann gesetzt oder automatisch verwendet werden
+- Adminmenü enthält Tabs für: Benutzer, Links, Linkvorschläge, Mail, Logs, Status
+- Debug-Ausgaben optional per Toggle oder URL `?debug=1`
 
 ---
 

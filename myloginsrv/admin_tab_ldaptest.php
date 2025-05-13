@@ -122,8 +122,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['username'], $_POST['p
         </div>
     </form>
 
-    <hr class="my-4">
-    <h5>Entschlüsselte ENVAD-Werte:</h5>
+     
+
+<?php if (isset($_GET['showdec']) && $_GET['showdec'] === '1'): ?>
+<hr class="my-4">
+<button class="btn btn-outline-secondary mb-2" onclick="toggleDecrypted()">Entschlüsselte ENVAD-Werte anzeigen/verbergen</button>
+<div id="decrypted" style="display:none;">
     <table class="table table-bordered table-sm bg-light">
         <thead><tr><th>Schlüssel</th><th>Wert (entschlüsselt)</th></tr></thead>
         <tbody>
@@ -132,6 +136,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['username'], $_POST['p
         <?php endforeach; ?>
         </tbody>
     </table>
+</div>
+//  Zum Anzeigen <code>?showdec=1</code> an die URL anhängen.
+<script>
+function toggleDecrypted() {
+    const box = document.getElementById("decrypted");
+    box.style.display = box.style.display === "none" ? "block" : "none";
+}
+</script>
+<?php else: ?>
+    <p class="text-muted mt-3">Entschlüsselte ENVAD-Werte sind aktuell ausgeblendet.</p>
+<?php endif; ?>
+
 </div>
 </body>
 </html>
