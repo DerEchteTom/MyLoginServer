@@ -25,6 +25,7 @@ $inactiveCount = $db->query("SELECT COUNT(*) FROM users WHERE active = 0")->fetc
                 <span class="badge bg-secondary-subtle text-dark ms-2"><?= $count ?></span>
             <?php endif; ?>
         </a>
+	<a href="admin_tab_linkeditor.php" class="btn btn-outline-secondary btn-sm">Linkeditor</a>
         <a href="admin_tab_logs.php" class="btn btn-outline-secondary btn-sm">Log</a>
         <a href="admin_tab_mailtest.php" class="btn btn-outline-secondary btn-sm">eMail cfg</a>
         <a href="admin_tab_ldaptest.php" class="btn btn-outline-secondary btn-sm">LDAP cfg</a>

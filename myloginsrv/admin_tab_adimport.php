@@ -60,7 +60,7 @@ if ($stage === 'import' && isset($_POST['u'], $_POST['e'], $_POST['role'], $_POS
         $username = strtolower($username);
         $email = strtolower($_POST['e'][$i]);
         $role = $_POST['role'][$i];
-        $active = $_POST['active'][$i] == '1' ? 1 : 0;
+        $active = isset($_POST['active'][$i]) ? 1 : 0;
         $sendmail = isset($mails[$i]);
 
         $stmt = $db->prepare("SELECT COUNT(*) FROM users WHERE LOWER(username) = :u");
