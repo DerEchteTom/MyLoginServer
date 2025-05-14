@@ -100,33 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Keine gültige Datei hochgeladen.";
     }
 }
-if (isset($_POST['export_links']) && $selectedUser > 0) {
-    $stmt = $db->prepare("SELECT username FROM users WHERE id = ?");
-    $stmt->execute([$selectedUser]);
-    $username = strtolower($stmt->fetchColumn());
 
-    $stmt = $db->prepare("SELECT alias, url FROM user_links WHERE user_id = ?");
-    $stmt->execute([$selectedUser]);
-    $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $export = [
-        'users' => [$username],
-        'links' => array_map(function ($entry) {
-            return [
-                'alias' => $entry['alias'],
-                'url' => $entry['url']
-            ];
-        }, $entries)
-    ];
-
-    $json = json_encode($export, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
-    $filename = 'links_' . $username . '_' . date('Y-m-d_His') . '.json';
-    header('Content-Type: application/json');
-    header("Content-Disposition: attachment; filename=\"$filename\"");
-    echo $json;
-    exit;
-}
 
 }
 
@@ -178,11 +153,9 @@ if ($selectedUser > 0) {
     <?php if ($selectedUser): ?>
         <form method="post" class="d-flex gap-2 mb-3" enctype="multipart/form-data">
             <input type="hidden" name="user_id" value="<?= $selectedUser ?>">
-            <button name="import_default" class="btn btn-sm btn-outline-primary">Standardlinks einfügen</button>
+            <button name="import_default" class="btn btn-sm btn-outline-primary">Standardlinks importieren</button>
             <input type="file" name="json_file" accept=".json" class="form-control form-control-sm w-auto">
             <button type="submit" class="btn btn-sm btn-outline-primary">Hochladen & Importieren</button>
-            <input type="hidden" name="user_id" value="<?= $selectedUser ?>">
-            <button name="export_links" class="btn btn-sm btn-outline-success">Links als JSON exportieren</button>
         </form>
 
         <form method="post" class="row g-2 mb-4 align-items-center">

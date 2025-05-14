@@ -1,0 +1,35 @@
+{
+    "users": [
+        "ts"
+    ],
+    "links": [
+        {
+            "alias": "Startseite",
+            "url": "https://example.com"
+        },
+        {
+            "alias": "Support",
+            "url": "https://support.example.com"
+        },
+        {
+            "alias": "Dokumentation",
+            "url": "https://docs.example.com"
+        },
+        {
+            "alias": "Heise",
+            "url": "https://www.heise.de"
+        },
+        {
+            "alias": "Golem",
+            "url": "https://www.golem.de"
+        },
+        {
+            "alias": "IT-Magazin",
+            "url": "https://www.itmagazine.ch/"
+        },
+        {
+            "alias": "holger",
+            "url": "https://holger.de"
+        }
+    ]
+}

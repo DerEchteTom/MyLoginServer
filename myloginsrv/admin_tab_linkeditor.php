@@ -108,14 +108,14 @@ function exportJSON() {
         }
     }
 
-    let assign_to;
+    let users;
     if (document.getElementById("to_all").checked) {
-        assign_to = "all";
+        users = "all";
     } else {
-        assign_to = Array.from(document.getElementById("userSelect").selectedOptions).map(opt => opt.value);
+        users = Array.from(document.getElementById("userSelect").selectedOptions).map(opt => opt.value);
     }
 
-    const json = JSON.stringify({ assign_to, links }, null, 2);
+    const json = JSON.stringify({ users, links }, null, 2);
     document.getElementById("exportArea").value = json;
     return json;
 }
@@ -150,15 +150,15 @@ function importJSON(event) {
                 tbody.appendChild(row);
             });
 
-            if (obj.assign_to === "all") {
+            if (obj.users === "all") {
                 document.getElementById("to_all").checked = true;
                 toggleAll(document.getElementById("to_all"));
-            } else if (Array.isArray(obj.assign_to)) {
+            } else if (Array.isArray(obj.users)) {
                 document.getElementById("to_all").checked = false;
                 toggleAll(document.getElementById("to_all"));
                 const select = document.getElementById("userSelect");
                 Array.from(select.options).forEach(opt => {
-                    opt.selected = obj.assign_to.includes(opt.value);
+                    opt.selected = obj.users.includes(opt.value);
                 });
             }
 
