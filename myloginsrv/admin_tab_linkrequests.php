@@ -52,7 +52,8 @@ $requests = $db->query("SELECT lr.id, lr.alias, lr.url, u.username FROM link_req
 </head>
 <body class="bg-light">
 <div class="container-fluid mt-4">
-    <?php include __DIR__ . '/admin_tab_nav.php'; ?>
+<?php include "admin_tab_nav.php"; ?>
+<div style="width: 90%; margin: 0 auto;">
     <h4 class="mb-4">Benutzervorschläge für neue Links</h4>
 
     <?php if ($info): ?><div class="alert alert-success small"><?= htmlspecialchars($info) ?></div><?php endif; ?>
