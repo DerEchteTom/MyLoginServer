@@ -1,6 +1,7 @@
 # MyLoginServer
 
 A modern, extensible login server with admin dashboard, user management, AD integration, and secure SMTP mail support. Built with PHP and SQLite, fully containerized with Docker support.
+After a user has successfully logged in, a defined selection of link addresses is displayed.
 
 ---
 
