@@ -41,13 +41,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 $db->commit();
-                $info = "$imported Benutzer erfolgreich importiert.";
+                $info = "$imported user successfully imported.";
             } catch (Exception $e) {
                 $db->rollBack();
-                $error = "Fehler beim Import: " . $e->getMessage();
+                $error = "import error: " . $e->getMessage();
             }
         } else {
-            $error = "Fehler: Ungültiges JSON-Format.";
+            $error = "error: invalif JSON-format.";
         }
     }
 
@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Benutzer löschen
     if ($action === 'delete' && $id && $id != 1) {
         $db->prepare("DELETE FROM users WHERE id = :id")->execute([':id' => $id]);
-        file_put_contents('audit.log', date('c') . " Benutzer ID $id gelöscht\n", FILE_APPEND);
+        file_put_contents('audit.log', date('c') . " user ID $id deleted\n", FILE_APPEND);
         header("Location: " . $_SERVER['PHP_SELF']);
         exit;
     }
@@ -101,15 +101,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $db->prepare("INSERT INTO users (username, password, email, role, active) VALUES (:u, :p, :e, :r, :a)");
                 $stmt->execute([':u' => $username, ':p' => $hash, ':e' => $email, ':r' => $role, ':a' => $active]);
 
-                file_put_contents('audit.log', date('c') . " Neuer Benutzer $username hinzugefügt\n", FILE_APPEND);
+                file_put_contents('audit.log', date('c') . " new user $username createtd\n", FILE_APPEND);
 
                 // Willkommensmail senden
 			$server = $_SERVER['HTTP_HOST'] ?? 'localhost';
 			$mail = getConfiguredMailer();
 			if ($mail) {
 			$mail->addAddress($email);
-			$mail->Subject = "Willkommen bei MyLoginServer";
-			$mail->Body = "Hallo $username,
+			$mail->Subject = "Welcome to MyLoginServer";
+			$mail->Body = "Hello $username,
 
 			Dein Zugang wurde erstellt.
 
@@ -119,9 +119,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			";
 			try {
 		        $mail->send();
-			        logAction("audit.log", "Willkommensmail an $email gesendet.");
+			        logAction("audit.log", "welcome mail sendet to $email.");
 			    } catch (Exception $e) {
-			        logAction("error.log", "Fehler beim Willkommensmail an $email: " . $mail->ErrorInfo);
+			        logAction("error.log", "error during sending welcome mail to $email: " . $mail->ErrorInfo);
 			    }
 			}
 
@@ -146,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <?php include "admin_tab_nav.php"; ?>
 
-<h4 class="mb-4">Benutzerverwaltung</h4>
+<h4 class="mb-4">user administration</h4>
 
 <!-- Erfolg- und Fehlermeldungen -->
 <?php if (!empty($info)): ?>
@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="col-auto">
         <form method="post" enctype="multipart/form-data" class="d-flex align-items-center">
             <input type="file" name="userfile" accept=".json" class="form-control form-control-sm me-2">
-            <button type="submit" class="btn btn-sm btn-outline-primary">Importieren</button>
+            <button type="submit" class="btn btn-sm btn-outline-primary" style="width: 150px;">import</button>
         </form>
     </div>
     <div class="col-auto d-none d-md-block">
@@ -170,8 +170,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="col">
         <form method="get" class="d-flex justify-content-end">
             <input type="text" name="search" value="<?= htmlspecialchars($_GET['search'] ?? '') ?>"
-                   class="form-control form-control-sm me-2" placeholder="Suche Benutzer/E-Mail">
-            <button type="submit" class="btn btn-sm btn-outline-primary">Suchen</button>
+                   class="form-control form-control-sm me-2" placeholder="search user/e-mai address">
+            <button type="submit" class="btn btn-sm btn-outline-primary" style="width: 170px;">search</button>
         </form>
     </div>
 </div>
@@ -181,13 +181,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <table class="table table-sm table-hover align-middle">
 <thead class="table-light">
 <tr>
-    <th>ID</th>
-    <th>Benutzername</th>
-    <th>E-Mail</th>
-    <th>Passwort</th>
-    <th>Rolle</th>
-    <th> Aktiv</th>
-    <th> Aktionen</th>
+    <th>id</th>
+    <th>user name</th>
+    <th>e-mail</th>
+    <th>password</th>
+    <th>role</th>
+    <th> activ</th>
+    <th> actions</th>
 </tr>
 </thead>
 <tbody>
@@ -203,7 +203,7 @@ foreach ($users as $u):
     <td><?= htmlspecialchars($u['id']) ?></td>
     <td><input type="text" name="username" value="<?= htmlspecialchars($u['username']) ?>" class="form-control form-control-sm"></td>
     <td><input type="email" name="email" value="<?= htmlspecialchars($u['email']) ?>" class="form-control form-control-sm"></td>
-    <td><input type="password" name="password" placeholder="(neu optional)" class="form-control form-control-sm"></td>
+    <td><input type="password" name="password" placeholder="(new optional)" class="form-control form-control-sm"></td>
     <td>
         <?php if ($u['id'] != 1): ?>
         <select name="role" class="form-select form-select-sm">
@@ -219,9 +219,9 @@ foreach ($users as $u):
     </td>
     <td>
         <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
-        <button type="submit" name="action" value="save" class="btn btn-sm btn-outline-success">Speichern</button>
+        <button type="submit" name="action" value="save" class="btn btn-sm btn-outline-success">save</button>
         <?php if ($u['id'] != 1): ?>
-            <button type="submit" name="action" value="delete" class="btn btn-sm btn-outline-danger">Löschen</button>
+            <button type="submit" name="action" value="delete" class="btn btn-sm btn-outline-danger">delete</button>
         <?php endif; ?>
     </td>
     </form>
@@ -233,16 +233,16 @@ foreach ($users as $u):
 
 <!-- Neuen Benutzer anlegen -->
 <div class="bg-white border rounded p-3 mt-4">
-    <h5>Neuen Benutzer hinzufügen</h5>
+    <h5>create new user</h5>
     <form method="post" class="row g-2 align-items-center">
         <div class="col-md-2">
-            <input type="text" name="new_username" placeholder="Benutzername" required class="form-control form-control-sm">
+            <input type="text" name="new_username" placeholder="user name" required class="form-control form-control-sm">
         </div>
         <div class="col-md-3">
-            <input type="email" name="new_email" placeholder="E-Mail" required class="form-control form-control-sm">
+            <input type="email" name="new_email" placeholder="e-mail" required class="form-control form-control-sm">
         </div>
         <div class="col-md-2">
-            <input type="password" name="new_password" placeholder="Passwort" required class="form-control form-control-sm">
+            <input type="password" name="new_password" placeholder="password" required class="form-control form-control-sm">
         </div>
         <div class="col-md-2">
             <select name="new_role" class="form-select form-select-sm">
@@ -254,7 +254,7 @@ foreach ($users as $u):
             <input type="checkbox" name="new_active" value="1" checked>
         </div>
         <div class="col-md-2">
-            <button type="submit" name="action" value="add" class="btn btn-sm btn-outline-primary w-100">Anlegen</button>
+            <button type="submit" name="action" value="add" class="btn btn-sm btn-outline-primary" style="width: 170px;">create</button>
         </div>
     </form>
 </div>

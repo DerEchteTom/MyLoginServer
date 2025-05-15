@@ -1,13 +1,21 @@
 <?php
-// Datei: init-db.php – Stand: 2025-04-22 11:03 Europe/Berlin
+// Datei: init-db.php – Stand: 2025-05-15  Europe/Berlin
 
 date_default_timezone_set('Europe/Berlin');
 
+function logInfo($msg)    { echo "[INFO] $msg\n"; }
+function logSuccess($msg) { echo "[ OK ] $msg\n"; }
+function logError($msg)   {
+    echo "[ERR!] $msg\n";
+    file_put_contents("error.log", date('c') . " $msg\n", FILE_APPEND);
+}
+
 try {
+    logInfo("Connecting to SQLite...");
     $db = new PDO('sqlite:users.db');
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    echo "🔍 Prüfe Datenbankstruktur...\n";
+    logInfo("Checking database structure...");
 
     // Tabelle 'users'
     $db->exec("CREATE TABLE IF NOT EXISTS users (
@@ -21,13 +29,16 @@ try {
         reset_token TEXT DEFAULT NULL,
         reset_expires INTEGER DEFAULT NULL
     )");
+    logSuccess("Tabelle 'users' OK.");
 
+    // Admin anlegen, wenn leer
     $exists = $db->query("SELECT COUNT(*) FROM users")->fetchColumn();
     if ((int)$exists === 0) {
         $adminPass = password_hash('adminpass', PASSWORD_DEFAULT);
-        $stmt = $db->prepare("INSERT INTO users (username, password, email, role, active, redirect_urls) VALUES ('admin', :p, '', 'admin', 1, '[]')");
+        $stmt = $db->prepare("INSERT INTO users (username, password, email, role, active, redirect_urls)
+                              VALUES ('admin', :p, '', 'admin', 1, '[]')");
         $stmt->execute([':p' => $adminPass]);
-        echo "✅ Admin-Benutzer 'admin' mit Passwort 'adminpass' wurde angelegt.\n";
+        logSuccess("Admin user 'admin' created with password 'adminpass'.");
     }
 
     // Tabelle 'link_requests'
@@ -39,6 +50,7 @@ try {
         created_at TEXT NOT NULL,
         status TEXT DEFAULT 'open'
     )");
+    logSuccess("Tabelle 'link_requests' OK.");
 
     // Tabelle 'user_links'
     $db->exec("CREATE TABLE IF NOT EXISTS user_links (
@@ -47,16 +59,19 @@ try {
         alias TEXT NOT NULL,
         url TEXT NOT NULL
     )");
+    logSuccess("Tabelle 'user_links' OK.");
 
-    // Logdateien initialisieren
+    // Log-Dateien prüfen
     foreach (['audit.log', 'error.log'] as $logfile) {
         if (!file_exists($logfile)) {
             file_put_contents($logfile, '');
-            echo "📄 Logdatei '$logfile' wurde erstellt.\n";
+            logSuccess("Logfile '$logfile' created.");
+        } else {
+            logInfo("Logfile '$logfile' already exists.");
         }
     }
 
-    // .env prüfen oder ergänzen
+    // .env prüfen und ggf. ergänzen
     $envFile = __DIR__ . '/.env';
     $defaultEnv = [
         'SMTP_HOST'   => '',
@@ -73,7 +88,7 @@ try {
             $content .= "$key=$val\n";
         }
         file_put_contents($envFile, $content);
-        echo ".env-Datei wurde erstellt.\n";
+        logSuccess(".env created.");
     } else {
         $envLines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         $envKeys = array_map(fn($line) => explode('=', $line, 2)[0], $envLines);
@@ -82,7 +97,7 @@ try {
         foreach ($defaultEnv as $key => $default) {
             if (!in_array($key, $envKeys)) {
                 $newLines[] = "$key=$default";
-                echo "$key zur .env-Datei ergänzt.\n";
+                logInfo("$key added to .env.");
             }
         }
 
@@ -91,10 +106,11 @@ try {
         }
     }
 
-    echo "✅ Initialisierung abgeschlossen.\n";
+    logSuccess("Initialization complete.");
 
 } catch (Exception $e) {
-    echo "❌ Fehler: " . $e->getMessage() . "\n";
-    file_put_contents("error.log", date('c') . " Fehler in init-db.php: " . $e->getMessage() . "\n", FILE_APPEND);
+    logError("Exception in init-db.php: " . $e->getMessage());
     exit(1);
 }
+logSuccess("Initialization complete.");
+exit(0);

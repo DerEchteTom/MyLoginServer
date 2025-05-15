@@ -71,7 +71,7 @@ if ($stage === 'import' && isset($_POST['u'], $_POST['e'], $_POST['role'])) {
             try {
                 $stmt = $db->prepare("INSERT INTO users (username, email, role, active) VALUES (:u, :e, :r, :a)");
                 $stmt->execute([':u' => $username, ':e' => $email, ':r' => $role, ':a' => $active]);
-                file_put_contents("audit.log", date("c") . " AD-Benutzer importiert: $username <$email> (Rolle: $role, Aktiv: $active)\n", FILE_APPEND);
+                file_put_contents("audit.log", date("c") . " ad user imported: $username <$email> (role: $role, Aktiv: $active)\n", FILE_APPEND);
                 $imported++;
 
                 if (file_exists("default_links.json")) {
@@ -91,8 +91,8 @@ if ($stage === 'import' && isset($_POST['u'], $_POST['e'], $_POST['role'])) {
                     $mail = getConfiguredMailer();
                     if ($mail) {
                         $mail->addAddress($email);
-                        $mail->Subject = "Willkommen bei MyLoginSrv";
-                        $mail->Body = "Hallo $username,
+                        $mail->Subject = "Welcome to MyLoginSrv";
+                        $mail->Body = "Hello $username,
 
 Dein Zugang wurde erstellt.
 
@@ -113,14 +113,14 @@ Mit freundlichen Gruessen.";
             }
         }
     }
-    $notice = "$imported Benutzer erfolgreich importiert.";
+    $notice = "$imported user succesfully imported.";
 }
 ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>AD-Benutzer importieren</title>
+    <title>import ad user</title>
     <link href="assets/css/bootstrap.min.css" rel="stylesheet">
     <style>
         tr:hover td {
@@ -132,7 +132,7 @@ Mit freundlichen Gruessen.";
 <div class="container-fluid mt-4">
 <?php include "admin_tab_nav.php"; ?>
 <div style="width: 90%; margin: 0 auto;">
-    <h4>AD-Benutzer importieren</h4>
+    <h4>import ad user</h4>
     <?php if ($notice): ?><div class="alert alert-success"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
     <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
@@ -140,12 +140,12 @@ Mit freundlichen Gruessen.";
     <form method="post">
         <input type="hidden" name="stage" value="preview">
         <div class="mb-2 d-flex gap-2 align-items-center">
-            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleCheckboxes(true)">Alle auswählen</button>
-            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleCheckboxes(false)">Alle abwählen</button>
-            <button type="submit" class="btn btn-outline-success btn-sm">Auswahl zur Vorschau</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleCheckboxes(true)">select all</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleCheckboxes(false)">deselect all</button>
+            <button type="submit" class="btn btn-outline-success btn-sm">review & status definition</button>
         </div>
         <table class="table table-sm table-bordered bg-white mx-auto" style="width: 100%;">
-            <thead><tr><th>#</th><th>Benutzername</th><th>E-Mail</th><th>Auswahl</th></tr></thead>
+            <thead><tr><th>#</th><th>user name</th><th>e-mail</th><th>select</th></tr></thead>
             <tbody>
             <?php foreach ($users as $i => $u): ?>
                 <tr>
@@ -171,9 +171,9 @@ Mit freundlichen Gruessen.";
     <?php elseif ($stage === 'preview' && $preview): ?>
     <form method="post">
         <input type="hidden" name="stage" value="import">
-        <p class="mb-2">Bitte Benutzer prüfen, Rolle und Aktivierung wählen. Danach Import starten:</p>
+        <p class="mb-2">please check user, select role and activation. then start import:</p>
         <table class="table table-sm table-bordered bg-white mx-auto" style="width: 100%;">
-            <thead><tr><th>#</th><th>Benutzername</th><th>E-Mail</th><th>Rolle</th><th>Aktiv</th><th>Info E-Mail</th></tr></thead>
+            <thead><tr><th>#</th><th>selected user name</th><th>e-mail</th><th>role</th><th>activ</th><th>send info e-mail</th></tr></thead>
             <tbody>
             <?php foreach ($preview as $i => $u): ?>
                 <tr>
@@ -203,7 +203,7 @@ Mit freundlichen Gruessen.";
             </tbody>
         </table>
         <div class="mt-3">
-            <button type="submit" class="btn btn-outline-primary">Importieren</button>
+            <button type="submit" class="btn btn-outline-primary">import</button>
         </div>
     </form>
     <?php elseif ($stage === 'preview'): ?>
