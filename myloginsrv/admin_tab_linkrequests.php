@@ -47,14 +47,14 @@ $requests = $db->query("SELECT lr.id, lr.alias, lr.url, u.username FROM link_req
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Linkanfragen</title>
+    <title>link requests</title>
     <link href="assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
 <div class="container-fluid mt-4">
 <?php include "admin_tab_nav.php"; ?>
 <div style="width: 90%; margin: 0 auto;">
-    <h4 class="mb-4">Benutzervorschläge für neue Links</h4>
+    <h4 class="mb-4">new link request from users</h4>
 
     <?php if ($info): ?><div class="alert alert-success small"><?= htmlspecialchars($info) ?></div><?php endif; ?>
     <?php if ($error): ?><div class="alert alert-danger small"><?= htmlspecialchars($error) ?></div><?php endif; ?>
@@ -62,11 +62,11 @@ $requests = $db->query("SELECT lr.id, lr.alias, lr.url, u.username FROM link_req
     <table class="table table-sm table-bordered bg-white">
         <thead class="table-light">
             <tr>
-                <th>ID</th>
-                <th>Benutzer</th>
-                <th>Alias</th>
-                <th>URL</th>
-                <th class="text-end">Aktion</th>
+                <th>id</th>
+                <th>user</th>
+                <th>alias</th>
+                <th>url</th>
+                <th class="text-end">action</th>
             </tr>
         </thead>
         <tbody>
@@ -79,11 +79,11 @@ $requests = $db->query("SELECT lr.id, lr.alias, lr.url, u.username FROM link_req
                 <td class="text-end">
                     <form method="post" class="d-inline">
                         <input type="hidden" name="id" value="<?= $req['id'] ?>">
-                        <button name="action" value="approve" class="btn btn-sm btn-outline-success">Übernehmen</button>
+                        <button name="action" value="approve" class="btn btn-sm btn-outline-success">accept</button>
                     </form>
                     <form method="post" class="d-inline ms-1">
                         <input type="hidden" name="id" value="<?= $req['id'] ?>">
-                        <button name="action" value="delete" class="btn btn-sm btn-outline-danger">Löschen</button>
+                        <button name="action" value="delete" class="btn btn-sm btn-outline-danger">delete</button>
                     </form>
                 </td>
             </tr>
