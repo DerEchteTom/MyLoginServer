@@ -28,7 +28,7 @@ $inactiveCount = $db->query("SELECT COUNT(*) FROM users WHERE active = 0")->fetc
 	<a href="admin_tab_linkeditor.php" class="btn btn-outline-secondary btn-sm">link editor</a>
         <a href="admin_tab_logs.php" class="btn btn-outline-secondary btn-sm">log</a>
         <a href="admin_tab_mailtest.php" class="btn btn-outline-secondary btn-sm">email connect</a>
-        <a href="admin_tab_ldaptest.php" class="btn btn-outline-secondary btn-sm">ad connect cfg</a>
+        <a href="admin_tab_ldaptest.php" class="btn btn-outline-secondary btn-sm">ad connect</a>
         <a href="admin_tab_status.php" class="btn btn-outline-secondary btn-sm">systemstatus</a>
         <a href="logout.php" class="btn btn-outline-danger btn-sm">logout</a>
     </div>

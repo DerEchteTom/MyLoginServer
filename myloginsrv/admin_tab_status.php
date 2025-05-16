@@ -53,10 +53,12 @@ function getMailerStatus() {
 }
 
 $dbFileStatus = checkFile("users.db");
+$dbinfo = checkFile("info.db");
 $audit = checkFile("audit.log");
 $error = checkFile("error.log");
 $env = checkFile(".env");
 $envad = checkFile(".envad");
+$encryption = checkFile("encryption.key");
 
 $envEnc = getEncStatus(".env");
 $envadEnc = getEncStatus(".envad");
@@ -97,9 +99,11 @@ $username = $_SESSION['username'] ?? '-';
   <title>Systemstatus</title>
   <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="bg-light" style="font-size: 0.95rem;">
+
+<body class="bg-light"style="font-size: 0.95rem;">
 <div class="container-fluid mt-4">
 <?php include "admin_tab_nav.php"; ?>
+<div style="width: 90%; margin: 0 auto;">
   <h5 class="mb-3">Systemstatus</h5>
 
   <div class="mb-3 text-dark fw-bold" style="font-size: 1.25rem;">
@@ -120,6 +124,8 @@ $username = $_SESSION['username'] ?? '-';
     </thead>
     <tbody>
       <tr><td>users.db</td><td><?= statusBadge($dbFileStatus['exists']) ?></td><td><?= statusBadge($dbFileStatus['readable']) ?></td><td><?= statusBadge($dbFileStatus['writable']) ?></td><td><?= $dbFileStatus['size'] ?> B</td><td>-</td></tr>
+      <tr><td>info.db</td><td><?= statusBadge($dbinfo['exists']) ?></td><td><?= statusBadge($dbinfo['readable']) ?></td><td><?= statusBadge($dbinfo['writable']) ?></td><td><?= $dbinfo['size'] ?> B</td><td>-</td></tr>
+      <tr><td>encryption.key</td><td><?= statusBadge($encryption['exists']) ?></td><td><?= statusBadge($encryption['readable']) ?></td><td><?= statusBadge($encryption['writable']) ?></td><td><?= $encryption['size'] ?> B</td><td>-</td></tr>
       <tr><td>audit.log</td><td><?= statusBadge($audit['exists']) ?></td><td><?= statusBadge($audit['readable']) ?></td><td><?= statusBadge($audit['writable']) ?></td><td><?= $audit['size'] ?> B</td><td>-</td></tr>
       <tr><td>error.log</td><td><?= statusBadge($error['exists']) ?></td><td><?= statusBadge($error['readable']) ?></td><td><?= statusBadge($error['writable']) ?></td><td><?= $error['size'] ?> B</td><td>-</td></tr>
       <tr><td>.env</td><td><?= statusBadge($env['exists']) ?></td><td><?= statusBadge($env['readable']) ?></td><td><?= statusBadge($env['writable']) ?></td><td><?= $env['size'] ?> B</td><td><?= $envEnc ?></td></tr>

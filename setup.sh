@@ -20,7 +20,7 @@ log_success() { echo -e "\033[1;32m[ OK ]\033[0m $1"; $DEBUG_MODE && echo "$TIME
 log_error()   { echo -e "\033[1;31m[ERR!]\033[0m $1"; $DEBUG_MODE && echo "$TIMESTAMP [ERR!] $1" >> "$DEBUG_FILE"; }
 divider()     { echo -e "\033[1;30m--------------------------------------------------------\033[0m"; }
 
-# ------------------------ Vorbereitung ------------------------
+# ------------------------ Preparing --------------------------
 cd "myloginsrv" || { log_error "Directory 'myloginsrv' not found."; exit 1; }
 $DEBUG_MODE && echo "$TIMESTAMP DEBUG MODE ENABLED" >> "$DEBUG_FILE"
 
@@ -36,20 +36,54 @@ if [ -z "$PHP_CONTAINER" ]; then
 fi
 
 divider
-log_info "Check and create required files..."
-for f in .env .envad; do
-  if [ ! -f "$f" ]; then
-    cp "$f.example" "$f" && log_success "$f created from example." || log_error "Could not create $f"
+# ------------------------ checking environment ------------------------
+log_info "Checking environment ..."
+for FILE in ".env" ".envad"; do
+  EXAMPLE="${FILE}.example"
+  TARGET="/var/www/html/$FILE"
+  EXAMPLE_PATH="/var/www/html/$EXAMPLE"
+
+  docker exec "$PHP_CONTAINER" bash -c "[ -f '$TARGET' ]"
+  if [ $? -ne 0 ]; then
+    docker exec "$PHP_CONTAINER" bash -c "cp '$EXAMPLE_PATH' '$TARGET' 2>/dev/null"
+    if [ $? -eq 0 ]; then
+      docker exec "$PHP_CONTAINER" bash -c "chmod 664 '$TARGET' && chown www-data:www-data '$TARGET'"
+      log_success "$FILE created from example."
+    else
+      log_error "Could not create $FILE – check if $EXAMPLE exists."
+    fi
   else
-    log_success "$f found."
+    log_info "$FILE already exists."
   fi
 done
+
+docker exec "$PHP_CONTAINER" bash -c "chmod 664 /var/www/html/.env /var/www/html/.envad"
+docker exec "$PHP_CONTAINER" bash -c "chown www-data:www-data /var/www/html/.env /var/www/html/.envad"
+log_success "Permissions set."
 
 touch audit.log error.log
 chmod 664 *.log .env .envad
 chown www-data:www-data *.log .env .envad 2>/dev/null
 log_success "Permissions set."
 
+divider
+# Datenbankdateien vorbereiten
+log_info "Preparing databases ..."
+docker exec "$PHP_CONTAINER" bash -c '
+  for dbfile in users.db info.db; do
+    filepath="/var/www/html/$dbfile"
+    if [ ! -f "$filepath" ]; then
+      touch "$filepath" && echo "[ OK ] $dbfile created." || echo "[ERR!] Failed to create $dbfile."
+    else
+      echo "[INFO] $dbfile already exists."
+    fi
+    chown www-data:www-data "$filepath"
+    chmod 664 "$filepath"
+  done
+'
+log_success "Database files checked and prepared."
+
+# ------------------ Database Initialization ------------------
 divider
 log_info "Check init-db.php syntax..."
 docker exec "$PHP_CONTAINER" php -l /var/www/html/init-db.php || { log_error "Syntax error in init-db.php"; exit 1; }
@@ -63,6 +97,22 @@ else
   log_error "Database failed."
   exit 1
 fi
+
+divider
+log_info "Check init_cms_db.php syntax..."
+docker exec "$PHP_CONTAINER" php -l /var/www/html/init_cms_db.php || {
+  log_error "Syntax error in init_cms_db.php. Aborting."
+  exit 1
+}
+
+divider
+log_info "Initialize CMS database..."
+if docker exec "$PHP_CONTAINER" php /var/www/html/init_cms_db.php; then
+  log_success "CMS database initialized."
+else
+  log_error "CMS database initialization failed."
+fi
+
 
 # ------------------ PHPMailer Installation ------------------
 divider

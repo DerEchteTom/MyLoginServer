@@ -158,15 +158,15 @@ if ($selectedUser > 0) {
 <?php include "admin_tab_nav.php"; ?>
 <div style="width: 90%; margin: 0 auto;">
 
-    <h4 class="mb-3">Links verwalten</h4>
+    <h4 class="mb-3">manage users - links</h4>
 
     <?php if ($info): ?><div class="alert alert-success small"><?= htmlspecialchars($info) ?></div><?php endif; ?>
     <?php if ($error): ?><div class="alert alert-danger small"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
     <form method="post" class="mb-3">
-        <label for="user_id" class="form-label">Benutzer auswählen:</label>
+        <label for="user_id" class="form-label">select user:</label>
         <select name="user_id" id="user_id" class="form-select form-select-sm" onchange="this.form.submit()">
-            <option value="0">-- wählen --</option>
+            <option value="0">-- please select --</option>
             <?php foreach ($users as $user): ?>
                 <option value="<?= $user['id'] ?>" <?= $selectedUser == $user['id'] ? 'selected' : '' ?>>
                     <?= htmlspecialchars($user['username']) ?>
@@ -178,11 +178,11 @@ if ($selectedUser > 0) {
     <?php if ($selectedUser): ?>
         <form method="post" class="d-flex gap-2 mb-3" enctype="multipart/form-data">
             <input type="hidden" name="user_id" value="<?= $selectedUser ?>">
-            <button name="import_default" class="btn btn-sm btn-outline-primary">Standardlinks einfügen</button>
+            <button name="import_default" class="btn btn-sm btn-outline-primary">import deafult links</button>
             <input type="file" name="json_file" accept=".json" class="form-control form-control-sm w-auto">
-            <button type="submit" class="btn btn-sm btn-outline-primary">Hochladen & Importieren</button>
+            <button type="submit" class="btn btn-sm btn-outline-primary">upload & import</button>
             <input type="hidden" name="user_id" value="<?= $selectedUser ?>">
-            <button name="export_links" class="btn btn-sm btn-outline-success">Links als JSON exportieren</button>
+            <button name="export_links" class="btn btn-sm btn-outline-success">export links as JSON</button>
         </form>
 
         <form method="post" class="row g-2 mb-4 align-items-center">
@@ -190,7 +190,7 @@ if ($selectedUser > 0) {
             <div class="col"><input type="text" name="alias" class="form-control form-control-sm" placeholder="Alias" required></div>
             <div class="col"><input type="url" name="url" class="form-control form-control-sm" placeholder="URL" required></div>
             <div class="col-auto">
-                <button type="submit" name="add_link" class="btn btn-sm btn-outline-success">Hinzufügen</button>
+                <button type="submit" name="add_link" class="btn btn-sm btn-outline-primary" style="width: 150px;">add</button>
             </div>
         </form>
 
@@ -201,8 +201,8 @@ if ($selectedUser > 0) {
                 <div class="col"><input type="text" name="alias" class="form-control form-control-sm" value="<?= htmlspecialchars($link['alias']) ?>"></div>
                 <div class="col"><input type="url" name="url" class="form-control form-control-sm" value="<?= htmlspecialchars($link['url']) ?>"></div>
                 <div class="col-auto">
-                    <button name="update_link" class="btn btn-sm btn-outline-primary">Speichern</button>
-                    <button name="delete_link" class="btn btn-sm btn-outline-danger">Löschen</button>
+                    <button name="update_link" class="btn btn-sm btn-outline-primary">save</button>
+                    <button name="delete_link" class="btn btn-sm btn-outline-danger">delete</button>
                 </div>
             </form>
         <?php endforeach; ?>

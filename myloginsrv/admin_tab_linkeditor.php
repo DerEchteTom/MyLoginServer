@@ -1,5 +1,5 @@
 <?php
-// Datei: admin_tab_linkeditor_visual_v3.php – Visual Linkeditor + Export + Verarbeitung – Stand: 2025-05-13 Europe/Berlin
+// File: admin_tab_linkeditor.php – Visual Link Editor + Export + Apply – Version: 2025-05-15 Europe/Berlin
 date_default_timezone_set('Europe/Berlin');
 require_once "auth.php";
 requireRole('admin');
@@ -10,14 +10,14 @@ $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $users = $db->query("SELECT username FROM users ORDER BY username ASC")->fetchAll(PDO::FETCH_COLUMN);
 ?>
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Visueller Linkeditor</title>
+    <title>Visual Link Editor</title>
     <link href="assets/css/bootstrap.min.css" rel="stylesheet">
     <style>
         td input { width: 100%; }
-        tr:hover td { background: #f8f9fa; }
+        tr:hover td { background: #f2f2f2; }
         textarea { font-family: monospace; font-size: 0.9rem; }
         .user-cols { display: flex; gap: 1rem; flex-wrap: wrap; }
         .user-cols select { flex: 1; min-width: 200px; }
@@ -27,15 +27,12 @@ $users = $db->query("SELECT username FROM users ORDER BY username ASC")->fetchAl
 <div class="container-fluid mt-4">
 <?php include "admin_tab_nav.php"; ?>
 <div style="width: 90%; margin: 0 auto;">
-<h4>Visueller Linkeditor mit Benutzer-Zuweisung</h4>
-
+<h4>Link Assignment Editor</h4>
 <form id="linkForm" method="post">
     <div class="mb-3">
-        <label class="form-label">Links bearbeiten:</label>
+        <label class="form-label">Edit Links:</label>
         <table class="table table-bordered table-sm bg-white" id="linkTable">
-            <thead>
-                <tr><th>Alias</th><th>URL</th><th style="width:40px;"></th></tr>
-            </thead>
+            <thead><tr><th>Alias</th><th>URL</th><th style="width:40px;"></th></tr></thead>
             <tbody>
                 <tr>
                     <td><input type="text" name="alias[]" class="form-control"></td>
@@ -44,11 +41,11 @@ $users = $db->query("SELECT username FROM users ORDER BY username ASC")->fetchAl
                 </tr>
             </tbody>
         </table>
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addRow()">+ Link hinzufügen</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addRow()">+ Add link</button>
     </div>
 
     <div class="mb-3">
-        <label class="form-label">Benutzer zuweisen:</label>
+        <label class="form-label">Assign to users:</label>
         <div class="user-cols">
             <select name="users[]" id="userSelect" class="form-select" multiple size="8">
                 <?php foreach ($users as $u): ?>
@@ -58,27 +55,24 @@ $users = $db->query("SELECT username FROM users ORDER BY username ASC")->fetchAl
         </div>
         <div class="form-check mt-2">
             <input class="form-check-input" type="checkbox" id="to_all" name="to_all" onchange="toggleAll(this)">
-            <label class="form-check-label" for="to_all">An alle Benutzer zuweisen</label>
+            <label class="form-check-label" for="to_all">Assign to all users</label>
         </div>
     </div>
 
     <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-        <button type="button" class="btn btn-outline-primary" onclick="exportJSON()">JSON anzeigen</button>
+        <button type="button" class="btn btn-outline-primary" onclick="exportJSON()">Show JSON</button>
         <button type="button" class="btn btn-outline-success" onclick="downloadJSON()">Download</button>
-        <label class="form-label m-0 small">JSON-Datei laden:</label>
+        <label class="form-label m-0 small">Load JSON file:</label>
         <input type="file" accept=".json" onchange="importJSON(event)" class="form-control form-control-sm" style="max-width: 300px;">
     </div>
 
-    <textarea id="exportArea" class="form-control mt-3" rows="10" placeholder="Exportiertes JSON erscheint hier..." readonly></textarea>
+    <textarea id="exportArea" class="form-control mt-3" rows="10" placeholder="Exported JSON will appear here..." readonly></textarea>
 
-    <div class="mt-3">
-        <button type="submit" formaction="admin_tab_linkeditor_execute.php" class="btn btn-outline-danger">Links jetzt zuweisen</button>
+    <div class="mt-3 d-flex gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-danger" onclick="assignLinks()">Assign links now</button>
+        <span id="assignStatus" class="ms-3 text-muted"></span>
     </div>
 </form>
-
-</div>
-</div>
-
 <script>
 function addRow() {
     const table = document.querySelector("#linkTable tbody");
@@ -126,7 +120,11 @@ function downloadJSON() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "link_export.json";
+
+    const now = new Date();
+    const fileName = "link_export_" + now.toISOString().slice(0, 16).replace(/[:T]/g, '-') + ".json";
+
+    a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -136,7 +134,7 @@ function importJSON(event) {
     reader.onload = function(e) {
         try {
             const obj = JSON.parse(e.target.result);
-            if (!obj.links || !Array.isArray(obj.links)) throw new Error("Fehlende 'links'-Daten.");
+            if (!obj.links || !Array.isArray(obj.links)) throw new Error("Missing 'links' array.");
 
             const tbody = document.querySelector("#linkTable tbody");
             tbody.innerHTML = "";
@@ -163,9 +161,8 @@ function importJSON(event) {
             }
 
             document.getElementById("exportArea").value = JSON.stringify(obj, null, 2);
-
         } catch (err) {
-            alert("Fehler beim Importieren: " + err.message);
+            alert("Import error: " + err.message);
         }
     };
     reader.readAsText(event.target.files[0]);
@@ -175,6 +172,35 @@ function toggleAll(checkbox) {
     const select = document.getElementById("userSelect");
     select.disabled = checkbox.checked;
 }
+
+function assignLinks() {
+    const json = document.getElementById('exportArea').value.trim();
+    if (!json) {
+        alert("No JSON data to assign.");
+        return;
+    }
+
+    fetch("linkeditor_apply.php", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: json
+    })
+    .then(r => r.text())
+    .then(response => {
+        document.getElementById("assignStatus").innerHTML =
+            '<span class="text-success">✔ Assignment completed</span>';
+        alert("Link assignment completed:\n\n" + response);
+    })
+    .catch(err => {
+        document.getElementById("assignStatus").innerHTML =
+            '<span class="text-danger">✖ Error during assignment</span>';
+        console.error(err);
+    });
+}
 </script>
+</div>
+</div>
 </body>
 </html>
