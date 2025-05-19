@@ -1,143 +1,142 @@
 <?php
-// Datei: dashboard.php – CMS-Infoseite mit Weiterleitung – Stand: 2025-05-17 Europe/Berlin
+// dashboard.php – Anzeigen von Inhalten mit Bildern aus der cms.db
+
 session_start();
 date_default_timezone_set('Europe/Berlin');
+require_once 'config.php';  // Deine Konfigurationsdatei
+require_once 'auth.php';     // Authentifizierung und Rollenzuweisung
 
-require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/config_support.php';
-
+// Admin-Check
+$isAdmin = isAuthenticated() && hasRole("admin");
 $username = $_SESSION['username'] ?? null;
-$role     = $_SESSION['role'] ?? 'user';
-$isAdmin  = ($role === 'admin');
-$target   = $isAdmin ? 'admin.php' : 'links.php';
+$role = $_SESSION['role'] ?? 'user';
 
-if (!$username) {
-    header("Location: login.php");
-    exit;
+// Redirect-Ziel
+$target = ($role === 'admin') ? 'admin.php' : 'links.php';
+
+// Prüfen, ob die Datenbank existiert, und falls nicht, initialisieren
+if (!file_exists('cms.db')) {
+    include('init_cms_db.php');  // Initialisiert die Datenbank, wenn sie nicht existiert
 }
 
-// DB vorbereiten
-$db_file = __DIR__ . '/info.db';
-$pdo = new PDO("sqlite:$db_file");
+// Wir laden Inhalte aus der Tabelle `page_content`
+$pdo = new PDO('sqlite:cms.db');
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-// Inhalte laden
-$raw = $pdo->query("SELECT section_name, text_content, image_path, link_url, link_text FROM page_content")->fetchAll(PDO::FETCH_ASSOC);
-$cms = [];
-foreach ($raw as $entry) {
-    $cms[$entry['section_name']] = $entry;
+// Abrufen des Timer-Werts aus der settings-Tabelle
+$stmt = $pdo->query("SELECT setting_value FROM settings WHERE setting_name = 'redirect_timer'");
+$timerSetting = $stmt->fetchColumn();
+if (!$timerSetting) {
+    // Falls der Timer-Wert nicht gesetzt ist, Standardwert (5 Sekunden)
+    $timerSetting = 5;
 }
 
-// Verarbeitung (Speichern) nur für Admin
-if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['content'])) {
-    foreach ($_POST['content'] as $key => $value) {
-        $stmt = $pdo->prepare("UPDATE page_content SET text_content = ? WHERE section_name = ?");
-        $stmt->execute([$value, $key]);
-    }
+$redirectSeconds = $timerSetting;  // Timer aus der Datenbank
 
-    if (!empty($_FILES['images'])) {
-        foreach ($_FILES['images']['tmp_name'] as $key => $tmp) {
-            if ($_FILES['images']['size'][$key] > 0) {
-                $folder = 'uploads/';
-                $ext = pathinfo($_FILES['images']['name'][$key], PATHINFO_EXTENSION);
-                $filename = $key . '_' . time() . '.' . $ext;
-                $targetPath = $folder . $filename;
-                if (move_uploaded_file($tmp, $targetPath)) {
-                    $stmt = $pdo->prepare("UPDATE page_content SET image_path = ? WHERE section_name = ?");
-                    $stmt->execute([$targetPath, $key]);
-                    $cms[$key]['image_path'] = $targetPath;
-                }
-            }
-        }
-    }
-
-    header("Location: dashboard.php?saved=1");
-    exit;
+// Abrufen von Daten aus der Tabelle page_content
+$stmt = $pdo->query("SELECT section_name, text_content, image_path FROM page_content");
+$contents = [];
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $contents[$row['section_name']] = [
+        'text' => $row['text_content'],
+        'image' => $row['image_path']
+    ];
 }
+
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Welcome – Dashboard</title>
+    <title>Dashboard</title>
     <link href="assets/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .cms-image { max-width: 100%; height: auto; margin-bottom: 1rem; }
-        .cms-section { padding: 1rem; background: #fff; border-radius: 5px; margin-bottom: 1.5rem; }
-        .edit-form { background: #f8f9fa; padding: 1rem; border-radius: 5px; margin-top: 1rem; }
-        .btn-edit-toggle { margin-bottom: 0.5rem; }
+        .timer { font-size: 1.5rem; font-weight: bold; margin-top: 10px; }
+        .btn-container { margin-top: 20px; }
+        .status { font-size: 1rem; color: red; margin-top: 10px; }
+        .image-preview { max-width: 100%; height: auto; }
+        .content-container { margin-top: 30px; }
+        .functional-container { border-bottom: 2px solid #ccc; padding-bottom: 20px; margin-bottom: 20px; }
     </style>
 </head>
 <body class="bg-light">
-<div class="container mt-4">
-    <h4>Welcome, <?= htmlspecialchars($username) ?></h4>
-    <p class="text-muted">This is your start page. You will be redirected to <code><?= htmlspecialchars($target) ?></code> in <span id="countdown">5</span> seconds...</p>
+<div class="container mt-4" style="max-width: 90%;">
 
-    <?php if (!$isAdmin): ?>
-        <button class="btn btn-outline-secondary btn-sm" onclick="stopRedirect()">Pause</button>
-        <button class="btn btn-outline-primary btn-sm" onclick="startRedirect()">Continue</button>
-    <?php endif; ?>
+    <!-- Funktions-Container -->
+    <div class="functional-container">
+        <h4>Welcome, <?= htmlspecialchars($username) ?> <?= $isAdmin ? '(Admin)' : '' ?></h4>
 
-    <div class="cms-section">
-        <h5><?= htmlspecialchars($cms['header']['text_content'] ?? 'Welcome') ?></h5>
-        <?php if (!empty($cms['header']['image_path'])): ?>
-            <img src="<?= htmlspecialchars($cms['header']['image_path']) ?>" class="cms-image" alt="Header image">
-        <?php endif; ?>
+        <!-- Anzeige des Timers -->
+        <p class="text-muted">You will be redirected in <span id="timer"><?= $redirectSeconds ?></span> seconds.</p>
 
-        <?php if ($isAdmin): ?>
-        <form method="post" enctype="multipart/form-data" class="edit-form">
-            <label class="form-label">Header text:</label>
-            <input type="text" name="content[header]" class="form-control mb-2" value="<?= htmlspecialchars($cms['header']['text_content'] ?? '') ?>">
-            <input type="file" name="images[header]" class="form-control mb-2">
-            <button type="submit" class="btn btn-outline-success btn-sm">Save header</button>
-        </form>
+        <!-- Buttons für Pause und Weiter -->
+        <div class="btn-container d-flex">
+            <button onclick="pauseRedirect()" class="btn btn-sm btn-outline-warning me-2">Pause Redirect</button>
+            <a href="<?= htmlspecialchars($target) ?>" class="btn btn-sm btn-outline-primary me-2">Go Now</a>
+            <?php if ($isAdmin): ?>
+                <a href="cms_edit.php" class="btn btn-sm btn-outline-success">Edit CMS Content</a>
+            <?php endif; ?>
+        </div>
+
+        <!-- Statusanzeige für die Weiterleitung -->
+        <div id="status" class="status"></div>
+    </div>
+
+    <!-- CMS-Inhalt-Container -->
+    <div class="content-container">
+        <?php if (!empty($contents)): ?>
+            <h5>CMS Content:</h5>
+            <?php foreach ($contents as $section => $content): ?>
+                <div class="cms-section">
+                    <h6><?= ucfirst($section) ?>:</h6>
+                    <p><?= nl2br(htmlspecialchars($content['text'])) ?></p>
+                    <?php if ($content['image']): ?>
+                        <div class="mb-3">
+                            <img src="<?= htmlspecialchars($content['image']) ?>" class="image-preview" alt="Image for <?= htmlspecialchars($section) ?>">
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <p>No CMS content available.</p>
         <?php endif; ?>
     </div>
 
-    <?php for ($i = 1; $i <= 3; $i++): ?>
-    <div class="cms-section">
-        <?php if (!empty($cms["text$i"]['image_path'])): ?>
-            <img src="<?= htmlspecialchars($cms["text$i"]['image_path']) ?>" class="cms-image" alt="Image <?= $i ?>">
-        <?php endif; ?>
-
-        <p><?= nl2br(htmlspecialchars($cms["text$i"]['text_content'] ?? '')) ?></p>
-
-        <?php if ($isAdmin): ?>
-        <form method="post" enctype="multipart/form-data" class="edit-form">
-            <label class="form-label">Text section <?= $i ?>:</label>
-            <textarea name="content[text<?= $i ?>]" class="form-control mb-2"><?= htmlspecialchars($cms["text$i"]['text_content'] ?? '') ?></textarea>
-            <input type="file" name="images[text<?= $i ?>]" class="form-control mb-2">
-            <button type="submit" class="btn btn-outline-success btn-sm">Save section <?= $i ?></button>
-        </form>
-        <?php endif; ?>
-    </div>
-    <?php endfor; ?>
-
-    <p class="text-end"><a href="<?= htmlspecialchars($target) ?>" class="btn btn-sm btn-outline-primary">Go to <?= htmlspecialchars($target) ?> &raquo;</a></p>
 </div>
 
 <script>
-let counter = 5;
-let timer = setInterval(updateCountdown, 1000);
-let redirectPaused = false;
-
-function updateCountdown() {
-    if (redirectPaused) return;
-    if (counter <= 1) {
-        window.location.href = "<?= htmlspecialchars($target) ?>";
-    } else {
-        counter--;
-        document.getElementById("countdown").textContent = counter;
-    }
-}
-
-function stopRedirect() {
-    redirectPaused = true;
-}
+// JavaScript for the Timer and Redirection
+let timerElement = document.getElementById("timer");
+let redirectTimeout;
+let remainingTime = <?= $redirectSeconds ?>;
 
 function startRedirect() {
-    redirectPaused = false;
+    // Update the timer display every second
+    setInterval(function() {
+        if (remainingTime > 0) {
+            remainingTime--;
+            timerElement.textContent = remainingTime;
+        }
+    }, 1000);
+
+    // Start redirect after the specified time
+    redirectTimeout = setTimeout(function() {
+        // Redirect to admin.php or links.php based on the role
+        <?php if ($_SESSION['role'] == 'admin') { ?>
+            window.location.href = 'admin.php'; // Redirect to the admin page
+        <?php } else { ?>
+            window.location.href = 'links.php'; // Redirect to the user page
+        <?php } ?>
+    }, <?= $redirectSeconds ?> * 1000); // Redirect after the set time
 }
+
+function pauseRedirect() {
+    clearTimeout(redirectTimeout);
+    document.getElementById("status").textContent = "Redirect paused.";
+}
+
+window.onload = startRedirect;
 </script>
 </body>
 </html>

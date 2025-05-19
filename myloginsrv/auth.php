@@ -18,4 +18,14 @@ function requireRole($role) {
         exit;
     }
 }
+
+// Prüft, ob ein Benutzer eingeloggt ist
+function isAuthenticated() {
+    return isset($_SESSION['username']);
+}
+
+// Prüft, ob Benutzer eine bestimmte Rolle hat (z. B. "admin")
+function hasRole($requiredRole) {
+    return isset($_SESSION['role']) && $_SESSION['role'] === $requiredRole;
+}
 ?>

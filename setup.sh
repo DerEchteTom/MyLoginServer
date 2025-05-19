@@ -139,6 +139,26 @@ else
   log_success "LDAP module already present."
 fi
 
+divider
+log_info "Check CMS upload directory..."
+
+UPLOAD_DIR="/var/www/html/uploads"
+TEST_FILE="$UPLOAD_DIR/test_$(date +%s).txt"
+
+# Prüfen oder anlegen
+docker exec "$PHP_CONTAINER" bash -c "mkdir -p '$UPLOAD_DIR' && chown www-data:www-data '$UPLOAD_DIR' && chmod 755 '$UPLOAD_DIR'"
+log_success "Upload directory ensured at $UPLOAD_DIR"
+
+# Schreibtest im Upload-Verzeichnis
+docker exec "$PHP_CONTAINER" bash -c "echo 'test' > '$TEST_FILE' && chown www-data:www-data '$TEST_FILE'" \
+    && log_success "Upload test file created." \
+    || log_error "Failed to create upload test file."
+
+# Aufräumen
+docker exec "$PHP_CONTAINER" bash -c "rm -f '$TEST_FILE'"
+
+echo "?? mini CMS upload directory test complete."
+
 # ------------------ Final Overview ------------------
 divider
 log_info "Setup complete."
