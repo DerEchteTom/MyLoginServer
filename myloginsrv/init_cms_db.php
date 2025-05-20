@@ -1,48 +1,73 @@
 <?php
-// init_cms_db.php – Initialisiert 'cms.db' und fügt die 'settings'-Tabelle hinzu
-$db_file = __DIR__ . '/cms.db';  // Verwendet 'cms.db'
+// init_cms_db.php – Initialisiert 'cms.db' mit CMS-Sektionen und Konfigurationen
+// Version: 2025-05-20_02 – erweitert für Multi-Sektion-Vorbereitung
+
+$db_file = __DIR__ . '/cms.db';
+$newMessages = [];
 
 try {
-    // Verbindung zur SQLite-Datenbank herstellen
     $pdo = new PDO("sqlite:$db_file");
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // Tabelle 'page_content' für die CMS-Inhalte erstellen
+    // === CMS-Tabelle: Inhalte (Quill-kompatibel: nur text_content, section_name als Schlüssel)
     $pdo->exec("CREATE TABLE IF NOT EXISTS page_content (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        section_name TEXT NOT NULL UNIQUE,
-        text_content TEXT,
-        image_path TEXT,
-        link_url TEXT,
-        link_text TEXT
+        section_name TEXT PRIMARY KEY,
+        text_content TEXT
     )");
 
-    // Tabelle 'settings' für Konfigurationen hinzufügen
-    $stmt = $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='settings'");
-    if ($stmt->fetchColumn() == 0) {
-        // 'settings'-Tabelle erstellen, falls nicht vorhanden
-        $pdo->exec("CREATE TABLE settings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            setting_name TEXT NOT NULL UNIQUE,
-            setting_value TEXT NOT NULL
-        )");
+    // === Konfigurations-Tabelle (Generische Key-Value-Tabelle für systemweite Einstellungen)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS settings (
+        setting_name TEXT PRIMARY KEY,
+        setting_value TEXT NOT NULL
+    )");
+
+    // === SECTION SETUP START ===
+    // Sektionen, die im CMS-Editor später auswählbar sein sollen (z. B. per Dropdown)
+    // Diese Struktur ist erweiterbar – jede Sektion wird eindeutig per section_name gespeichert
+    $sections = ['main', 'footer', 'legal', 'help'];
+
+    foreach ($sections as $section) {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM page_content WHERE section_name = ?");
+        $stmt->execute([$section]);
+        if ($stmt->fetchColumn() == 0) {
+            $pdo->prepare("INSERT INTO page_content (section_name, text_content) VALUES (?, ?)")->execute([
+                $section, "<p>Default content for <strong>$section</strong> section.</p>"
+            ]);
+            $newMessages[] = "Sektion <strong>$section</strong> wurde neu angelegt.";
+        }
     }
+    // === SECTION SETUP END ===
 
-    // 'redirect_timer' in 'settings'-Tabelle einfügen, falls noch nicht vorhanden
-    $stmt = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_name = 'redirect_timer'");
-    $stmt->execute();
-    $existing_value = $stmt->fetchColumn();
+    // === Default-Konfigurationen (generisch und ausbaubar)
+    $configurations = [
+        'redirect_timer' => '5',
+        'site_title' => 'My CMS'
+    ];
 
-    if ($existing_value === false) {
-        $stmt = $pdo->prepare("INSERT INTO settings (setting_name, setting_value) VALUES ('redirect_timer', '5')");
-        $stmt->execute();
-        echo "Standardwert für 'redirect_timer' wurde auf 5 gesetzt.\n";
-    } else {
-        echo "'redirect_timer' existiert bereits mit dem Wert: " . $existing_value . "\n";
+    foreach ($configurations as $setting_name => $default_value) {
+        $stmt = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_name = ?");
+        $stmt->execute([$setting_name]);
+        $existing_value = $stmt->fetchColumn();
+
+        if ($existing_value === false) {
+            $stmt = $pdo->prepare("INSERT INTO settings (setting_name, setting_value) VALUES (?, ?)");
+            $stmt->execute([$setting_name, $default_value]);
+            $newMessages[] = "Konfiguration <strong>'$setting_name'</strong> mit Standardwert <em>'$default_value'</em> hinzugefügt.";
+        }
     }
 
 } catch (PDOException $e) {
-    echo "Datenbankinitialisierung fehlgeschlagen: " . $e->getMessage();
+    echo "<div style='color: red; font-weight: bold;'>Datenbankfehler: " . htmlspecialchars($e->getMessage()) . "</div>";
     exit();
+}
+
+// Ausgabe nur bei tatsächlichen Änderungen
+if (!empty($newMessages)) {
+    echo "<div style='background: #f0f0f0; border: 1px solid #ccc; padding: 10px; font-family: sans-serif;'>";
+    echo "<h4 style='margin-top: 0;'>CMS-Initialisierung abgeschlossen:</h4><ul>";
+    foreach ($newMessages as $msg) {
+        echo "<li>$msg</li>";
+    }
+    echo "</ul></div>";
 }
 ?>
