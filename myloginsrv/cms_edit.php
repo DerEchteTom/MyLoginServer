@@ -13,7 +13,6 @@ function log_error($msg) {
     file_put_contents(__DIR__ . '/error.log', "[" . date('Y-m-d H:i:s') . "] ERROR: $msg\n", FILE_APPEND);
 }
 
-// === Datenbank & Sektionen ===
 $pdo = new PDO('sqlite:cms.db');
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -31,7 +30,6 @@ $stmt = $pdo->prepare("SELECT text_content FROM page_content WHERE section_name 
 $stmt->execute([$section]);
 $contentHTML = $stmt->fetchColumn() ?? '';
 
-// Feedback nach dem letzten Redirect holen
 $feedback = $_SESSION['feedback'] ?? '';
 unset($_SESSION['feedback']);
 
@@ -51,10 +49,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $feedback = "Failed to save content.";
         }
     }
-}
 
+    if (isset($_POST['delete_image']) && isset($_POST['filename'])) {
+        $file = basename($_POST['filename']);
+        $path = __DIR__ . "/uploads/$file";
+        if (is_file($path)) {
+            if (unlink($path)) {
+                $feedback = "Image '$file' deleted.";
+                log_audit("Image '$file' deleted manually in editor.");
+            } else {
+                log_error("Failed to delete image '$file'");
+                $feedback = "Failed to delete image.";
+            }
+        }
+    }
 
-    if (isset($_POST['create_section'], $_POST['new_section'])) {
+    if (isset($_POST['create_section']) && isset($_POST['new_section']) && $_POST['new_section'] !== '') {
         $newSection = trim($_POST['new_section']);
         if (!preg_match('/^[a-zA-Z0-9_-]{1,32}$/', $newSection)) {
             $feedback = "Invalid section name.";
@@ -87,20 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             log_error("Timer update failed: value '$timerValue' out of bounds.");
         }
     }
-
-function cleanUnusedImages($html, $dir) {
-    preg_match_all('/<img[^>]+src="\/uploads\/([^"]+)"/', $html, $matches);
-    $used = array_map('basename', $matches[1] ?? []);
-    foreach (glob($dir . '/*') as $file) {
-        if (is_file($file) && !in_array(basename($file), $used)) {
-            unlink($file);
-            log_audit("Unused image '" . basename($file) . "' deleted during save.");
-        }
-    }
 }
 
-$uploadDir = __DIR__ . '/uploads/';
-// Galerie zeigt nur verwendete Bilder
 $stmt = $pdo->query("SELECT text_content FROM page_content");
 $usedImages = [];
 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -110,6 +108,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     }
 }
 $usedImages = array_unique(array_map('basename', $usedImages));
+$uploadDir = __DIR__ . '/uploads/';
 $allImages = glob($uploadDir . '*.{jpg,jpeg,png,gif}', GLOB_BRACE);
 $images = array_filter($allImages, function($img) use ($usedImages) {
     return in_array(basename($img), $usedImages);
@@ -125,14 +124,17 @@ $images = array_filter($allImages, function($img) use ($usedImages) {
   <style>
     #editor-container { height: 600px; background: white; border-radius: 8px; }
     .ql-editor img { max-width: 100%; height: auto; border-radius: 6px; }
-    .thumb { max-width: 150px; height: auto; border-radius: 4px; margin-bottom: 8px; 
-  width: 150px;
-  height: 100px;
-  object-fit: cover;}
+    .thumb {
+      width: 100%;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body class="p-4 bg-light">
-<div class="container" style="max-width: 90%;">
+<div class="container mt-4" style="max-width: 90%;">
   <h3>Edit CMS Content</h3>
   <form method="get" class="mb-3">
     <label for="section" class="form-label">Select section:</label>
@@ -163,9 +165,9 @@ $images = array_filter($allImages, function($img) use ($usedImages) {
 
   <hr class="my-5">
   <h5>Uploaded Images</h5>
-  <div class="row">
+  <div class="row g-1">
     <?php foreach ($images as $img): $filename = basename($img); ?>
-      <div class="col-md-3 mb-4">
+      <div class="col-sm-4 col-md-2 mb-4">
         <img src="/uploads/<?= htmlspecialchars($filename) ?>" alt="<?= $filename ?>" class="thumb img-thumbnail">
         <form method="POST" onsubmit="return confirm('Delete image <?= htmlspecialchars($filename) ?>?');">
           <input type="hidden" name="filename" value="<?= htmlspecialchars($filename) ?>">
@@ -176,14 +178,27 @@ $images = array_filter($allImages, function($img) use ($usedImages) {
   </div>
 
   <hr class="my-4">
-  <h5>Add New Section</h5>
-  <form method="POST" class="row g-2 align-items-center mb-4">
-    <div class="col-auto">
+  <h5>Manage Sections</h5>
+  <form method="POST" class="row g-2 align-items-center mb-4 d-flex flex-wrap">
+    <div class="col-auto" style="min-width: 250px;">
       <input type="text" name="new_section" class="form-control" placeholder="New section name" required pattern="^[a-zA-Z0-9_-]{1,32}$">
     </div>
     <div class="col-auto">
       <button name="create_section" class="btn btn-outline-success">Add Section</button>
     </div>
+    <div class="col-auto">
+      <span class="form-text text-muted">Current: <strong><?= htmlspecialchars($section) ?></strong></span>
+    </div>
+    <div class="col-auto">
+      <button name="delete_section_fixed" class="btn btn-outline-danger" onclick="return confirm('Really delete section <?= htmlspecialchars($section) ?>?');">Delete Section</button>
+    </div>
+  </form>
+
+  
+  <h5>Delete Section</h5>
+  <form method="POST" onsubmit="return confirm('Really delete this section?');" class="mb-4">
+    <input type="hidden" name="section_name" value="<?= htmlspecialchars($section) ?>">
+    <button name="delete_section_fixed" class="btn btn-sm btn-outline-danger">Delete Section</button>
   </form>
 
   <h5>Redirect Timer (Seconds)</h5>
@@ -200,6 +215,29 @@ $images = array_filter($allImages, function($img) use ($usedImages) {
       <button name="update_timer" class="btn btn-outline-primary">Update Timer</button>
     </div>
   </form>
+
+  <h5>Check Missing Images</h5>
+  <div class="mb-3">
+    <?php
+    $stmt = $pdo->query("SELECT section_name, text_content FROM page_content");
+    $missing = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        preg_match_all('/<img[^>]+src="\/uploads\/([^"]+)"/', $row['text_content'], $matches);
+        foreach ($matches[1] ?? [] as $fname) {
+            if (!file_exists(__DIR__ . '/uploads/' . basename($fname))) {
+                $missing[] = htmlspecialchars($fname) . " (Section: " . htmlspecialchars($row['section_name']) . ")";
+            }
+        }
+    }
+    if (!empty($missing)): ?>
+      <ul class="text-danger">
+        <?php foreach ($missing as $m): ?><li><?= $m ?></li><?php endforeach; ?>
+      </ul>
+    <?php else: ?>
+      <p class="text-success">No missing image links found in database.</p>
+    <?php endif; ?>
+  </div>
+
 </div>
 
 <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
