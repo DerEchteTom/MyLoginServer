@@ -1,6 +1,6 @@
 <?php
-// Datei: admin_head.php – Version: 2025-05-09_01
-// Beschreibung: Gemeinsamer Header für Admin-/Debug-Seiten (CSS, JS, Debug-Tools)
+// Datei: admin_head.php â€“ Version: 2025-05-09_01
+// Beschreibung: Gemeinsamer Header fÃ¼r Admin-/Debug-Seiten (CSS, JS, Debug-Tools)
 // Erstellt: 2025-05-09
 
 require_once 'debug_helper.php';

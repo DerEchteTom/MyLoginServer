@@ -1,10 +1,10 @@
 <?php
-// admin_images.php – Übersicht aller Upload-Bilder mit Löschfunktion
+// admin_images.php â€“ Ãœbersicht aller Upload-Bilder mit LÃ¶schfunktion
 require_once 'config.php';
 require_once 'auth.php';
 requireRole('admin');
 
-$uploadDir = __DIR__ . '/uploads/';
+$uploadDir = __DIR__ . './uploads';
 $messages = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete']) && isset($_POST['filename'])) {
@@ -12,9 +12,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete']) && isset($_
     $filepath = $uploadDir . $filename;
     if (file_exists($filepath) && is_file($filepath)) {
         if (unlink($filepath)) {
-            $messages[] = "Bild <strong>$filename</strong> wurde gelöscht.";
+            $messages[] = "Bild <strong>$filename</strong> wurde gelÃ¶scht.";
         } else {
-            $messages[] = "Fehler beim Löschen von <strong>$filename</strong>.";
+            $messages[] = "Fehler beim LÃ¶schen von <strong>$filename</strong>.";
         }
     }
 }
@@ -43,7 +43,7 @@ $images = glob($uploadDir . '*.{jpg,jpeg,png,gif}', GLOB_BRACE);
         $filename = basename($img);
         ?>
         <div class="col-md-3 mb-4">
-          <img src="/uploads/<?= $filename ?>" alt="<?= $filename ?>" class="thumb img-thumbnail">
+          <img src="./uploads<?= $filename ?>" alt="<?= $filename ?>" class="thumb img-thumbnail">
           <form method="POST">
             <input type="hidden" name="filename" value="<?= htmlspecialchars($filename) ?>">
             <button name="delete" class="btn btn-sm btn-outline-danger mt-2 w-100">Delete</button>

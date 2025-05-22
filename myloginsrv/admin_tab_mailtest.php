@@ -63,7 +63,7 @@ $key = getEncryptionKey();
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>SMTP-Mailtest & Konfiguration</title>
+    <title>smtp e-mail test & configuration</title>
     <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
@@ -71,25 +71,25 @@ $key = getEncryptionKey();
 
 <?php include "admin_tab_nav.php"; ?>
 <div class="container">
-    <h3>SMTP-Test & Konfiguration</h3>
+    <h3>smtp e-mail test & configuration</h3>
 
     <form method="post" class="mb-3 d-flex gap-2">
         <input type="email" name="test_email" placeholder="E-Mail-Adresse" required class="form-control w-auto" style="min-width:320px">
-        <button type="submit" name="send_test" class="btn btn-outline-primary">Testmail senden</button>
+        <button type="submit" name="send_test" class="btn btn-outline-primary">send test e-mail</button>
     </form>
     <?php if (!empty($test_notice)): ?>
         <div class="alert alert-info"><?= htmlspecialchars($test_notice) ?></div>
     <?php endif; ?>
 
-    <h4 class="mt-5">.env bearbeiten / verschlüsseln</h4>
+    <h4 class="mt-5">edit .env  / encrypt</h4>
     <?php if (!empty($notice)): ?>
         <div class="alert alert-info"><?= htmlspecialchars($notice) ?></div>
     <?php endif; ?>
     <form method="post" class="mb-3">
         <textarea name="env" rows="14" class="form-control font-monospace"><?= htmlspecialchars(file_get_contents($env_file)) ?></textarea>
         <div class="d-flex gap-2 mt-2">
-            <button type="submit" name="env_save" class="btn btn-outline-secondary">Nur speichern</button>
-            <button type="submit" name="env_encrypt" class="btn btn-outline-warning">Jetzt verschlüsseln</button>
+            <button type="submit" name="env_save" class="btn btn-outline-secondary">save</button>
+            <button type="submit" name="env_encrypt" class="btn btn-outline-warning">encrypt</button>
         </div>
     </form>
 
@@ -116,7 +116,7 @@ function toggleDecrypted() {
 }
 </script>
 <?php else: ?>
-    <p class="text-muted mt-3">Entschlüsselte ENV-Werte sind aktuell ausgeblendet.</p>
+    <p class="text-muted mt-3">Decrypted ENV values are currently hidden.</p>
 <?php endif; ?>
 
 </div>

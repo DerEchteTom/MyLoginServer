@@ -1,5 +1,5 @@
 <?php
-// Datei: admin_tab_nav.php – Stand: 2025-04-23 12:28 Europe/Berlin
+// Datei: admin_tab_nav.php â€“ Stand: 2025-04-23 12:28 Europe/Berlin
 
 if (!isset($db)) {
     $db = new PDO('sqlite:users.db');

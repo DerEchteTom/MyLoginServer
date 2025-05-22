@@ -1,5 +1,5 @@
 <?php
-// Datei: index.php – Stand: 2025-04-22 08:22 Europe/Berlin
+// Datei: index.php â€“ Stand: 2025-04-22 08:22 Europe/Berlin
 
 date_default_timezone_set('Europe/Berlin');
 session_start();

@@ -1,5 +1,5 @@
 <?php
-// Datei: admin_tab_links.php – Stand: 2025-04-23  Europe/Berlin
+// Datei: admin_tab_links.php â€“ Stand: 2025-04-23  Europe/Berlin
 
 date_default_timezone_set('Europe/Berlin');
 require_once __DIR__ . '/config.php';
@@ -19,7 +19,7 @@ $error = '';
 
 $selectedUser = (int)($_POST['user_id'] ?? $_GET['user_id'] ?? 0);
 
-// Links hinzufügen oder bearbeiten
+// Links hinzufÃ¼gen oder bearbeiten
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_link']) && $selectedUser > 0) {
         $alias = trim($_POST['alias'] ?? '');
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($check->fetchColumn() == 0) {
                 $stmt = $db->prepare("INSERT INTO user_links (user_id, alias, url) VALUES (?, ?, ?)");
                 $stmt->execute([$selectedUser, $alias, $url]);
-                $info = "Link hinzugefügt.";
+                $info = "Link hinzugefuegt.";
             } else {
                 $error = "Alias '$alias' existiert bereits.";
             }
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($linkId > 0) {
             $stmt = $db->prepare("DELETE FROM user_links WHERE id = ?");
             $stmt->execute([$linkId]);
-            $info = "Link gelöscht.";
+            $info = "Link gelÃ¶scht.";
         }
     } elseif (isset($_POST['import_default']) && $selectedUser > 0) {
         $file = 'default_links.json';
@@ -94,10 +94,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $info = "Links aus JSON importiert.";
         } else {
-            $error = "Ungültige JSON-Datei.";
+            $error = "Ungueltige JSON-Datei.";
         }
     } else {
-        $error = "Keine gültige Datei hochgeladen.";
+        $error = "Keine gueltige Datei hochgeladen.";
     }
 }
 if (isset($_POST['export_links']) && $selectedUser > 0) {
@@ -187,10 +187,10 @@ if ($selectedUser > 0) {
 
         <form method="post" class="row g-2 mb-4 align-items-center">
             <input type="hidden" name="user_id" value="<?= $selectedUser ?>">
-            <div class="col"><input type="text" name="alias" class="form-control form-control-sm" placeholder="Alias" required></div>
-            <div class="col"><input type="url" name="url" class="form-control form-control-sm" placeholder="URL" required></div>
+            <div class="col"><input type="text" name="alias" class="form-control form-control-sm" placeholder="insert alias ..." required></div>
+            <div class="col"><input type="url" name="url" class="form-control form-control-sm" placeholder="https://... " required></div>
             <div class="col-auto">
-                <button type="submit" name="add_link" class="btn btn-sm btn-outline-primary" style="width: 150px;">add</button>
+                <button type="submit" name="add_link" class="btn btn-sm btn-outline-primary" style="width: 150px;">add new link</button>
             </div>
         </form>
 

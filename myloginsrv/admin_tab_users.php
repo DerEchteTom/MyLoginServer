@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Benutzer löschen
+    // Benutzer lÃ¶schen
     if ($action === 'delete' && $id && $id != 1) {
         $db->prepare("DELETE FROM users WHERE id = :id")->execute([':id' => $id]);
         file_put_contents('audit.log', date('c') . " user ID $id deleted\n", FILE_APPEND);
@@ -143,9 +143,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body class="bg-light">
 <div class="container-fluid mt-4">
-
 <?php include "admin_tab_nav.php"; ?>
-
+<div style="width: 90%; margin: 0 auto;">
 <h4 class="mb-4">user administration</h4>
 
 <!-- Erfolg- und Fehlermeldungen -->

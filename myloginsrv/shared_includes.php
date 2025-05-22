@@ -1,10 +1,10 @@
 <?php
-// Datei: shared_includes.php – Version: 2025-05-09_01
-// Beschreibung: Zentrale Funktionssammlung für Logging, Mail, Debug
+// Datei: shared_includes.php â€“ Version: 2025-05-09_01
+// Beschreibung: Zentrale Funktionssammlung fÃ¼r Logging, Mail, Debug
 // Erstellt: 2025-05-09
 
-require_once 'config_support.php';      // enthält Mailversand & Verschlüsselung
-require_once 'debug_helper.php';        // enthält renderDebugBox()
+require_once 'config_support.php';      // enthÃ¤lt Mailversand & VerschlÃ¼sselung
+require_once 'debug_helper.php';        // enthÃ¤lt renderDebugBox()
 date_default_timezone_set('Europe/Berlin');
 
 // Debug-Wrapper (optional)

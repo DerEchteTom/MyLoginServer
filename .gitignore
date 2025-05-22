@@ -1,3 +1,5 @@
 .env
 .envad
-users.db
+*.db
+encryption.key
+*.log

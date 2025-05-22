@@ -1,5 +1,5 @@
 <?php
-// Datei: linkeditor_apply.php – Assign links to users based on JSON input – Stand: 2025-05-16 Europe/Berlin
+// Datei: linkeditor_apply.php â€“ Assign links to users based on JSON input â€“ Stand: 2025-05-16 Europe/Berlin
 date_default_timezone_set("Europe/Berlin");
 require_once "auth.php";
 requireRole("admin");

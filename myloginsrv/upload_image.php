@@ -1,5 +1,5 @@
 <?php
-// upload_image.php – sicherer Upload mit MIME-Check & Logging
+// upload_image.php â€“ sicherer Upload mit MIME-Check & Logging
 // Version: 2025-05-20_02
 
 date_default_timezone_set('Europe/Berlin');
@@ -48,7 +48,7 @@ do {
 
 $targetUrl = '/uploads/' . $filename;
 
-// === Upload durchführen ===
+// === Upload durchfÃ¼hren ===
 if (move_uploaded_file($tmp, $targetFile)) {
     log_audit("Image uploaded: $filename (original: $originalName, MIME: $mime)");
     echo json_encode(['success' => true, 'url' => $targetUrl]);

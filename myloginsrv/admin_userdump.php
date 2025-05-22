@@ -1,5 +1,5 @@
 <?php
-// Datei: admin_userdump.php – Stand: 2025-04-23 11:54 Europe/Berlin
+// Datei: admin_userdump.php â€“ Stand: 2025-04-23 11:54 Europe/Berlin
 
 date_default_timezone_set('Europe/Berlin');
 require_once __DIR__ . '/config.php';

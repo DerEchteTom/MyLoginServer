@@ -1,6 +1,6 @@
 <?php
-// Datei: debug_helper.php – Version: 2025-05-09_01
-// Beschreibung: Umschaltbare Debug-Ausgabe für Admin- und Loginmodule
+// Datei: debug_helper.php â€“ Version: 2025-05-09_01
+// Beschreibung: Umschaltbare Debug-Ausgabe fÃ¼r Admin- und Loginmodule
 
 function renderDebugBox(array $debugMessages, bool $show = true): void {
     $toggleState = $show ? 'block' : 'none';

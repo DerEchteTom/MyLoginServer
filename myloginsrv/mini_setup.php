@@ -1,5 +1,5 @@
 <?php
-// Datei: mini_setup.php – Stand: 2025-05-16 Europe/Berlin
+// Datei: mini_setup.php â€“ Stand: 2025-05-16 Europe/Berlin
 
 date_default_timezone_set('Europe/Berlin');
 
@@ -22,7 +22,7 @@ function fixPermissions($file, $label) {
         chmod($file, 0664);
         chown($file, 'www-data');
 
-        // Prüfung erneut
+        // PrÃ¼fung erneut
         if (is_writable($file)) {
             echo "[ OK ] $label is now writable (owner: www-data, perms: 664).\n";
         } else {
@@ -33,7 +33,7 @@ function fixPermissions($file, $label) {
     }
 }
 
-// Hauptverzeichnis korrekt auflösen
+// Hauptverzeichnis korrekt auflÃ¶sen
 $base = __DIR__;
 
 fixPermissions("$base/users.db", "users.db");

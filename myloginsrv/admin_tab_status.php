@@ -14,46 +14,47 @@ function checkFile($path) {
 }
 
 function statusBadge($ok) {
-    return $ok ? '<span class="badge border border-success text-success">Ja</span>'
-               : '<span class="badge border border-danger text-danger">Nein</span>';
+    return $ok ? '<span class="badge border border-success text-success">Yes</span>'
+               : '<span class="badge border border-danger text-danger">No</span>';
 }
 
 function getEncStatus($file) {
-    if (!file_exists($file)) return "❌ fehlt";
+    if (!file_exists($file)) return "❌ missing";
     $txt = file_get_contents($file);
-    if (strpos($txt, 'ENC:') !== false || strpos($txt, 'XOR:') !== false) return "✅ verschlüsselt";
-    return "🔓 unverschlüsselt";
+    if (strpos($txt, 'ENC:') !== false || strpos($txt, 'XOR:') !== false) return "✅ yes";
+    return "🔓 no";
 }
 
 function getMailerStatus() {
-    $status = "Nein";
+    $status = "No";
     $diag = [];
 
     $autoloadPath = __DIR__ . '/vendor/autoload.php';
     $cls = 'PHPMailer\\PHPMailer\\PHPMailer';
 
     if (file_exists($autoloadPath)) {
-        $diag[] = "Autoload vorhanden";
+        $diag[] = "Autoload available";
         require_once $autoloadPath;
         if (class_exists($cls)) {
-            $diag[] = "Klasse geladen";
+            $diag[] = "class loaded";
             if (method_exists($cls, 'send')) {
                 $status = "Ja";
-                $diag[] = "send()-Methode vorhanden";
+                $diag[] = "send()-method available";
             } else {
-                $diag[] = "send()-Methode fehlt";
+                $diag[] = "send()-method missing";
             }
         } else {
-            $diag[] = "Klasse fehlt";
+            $diag[] = "class missing";
         }
     } else {
-        $diag[] = "Autoload fehlt";
+        $diag[] = "autoload missing";
     }
     return [$status, $diag];
 }
 
 $dbFileStatus = checkFile("users.db");
 $dbinfo = checkFile("info.db");
+$dbcms = checkFile("cms.db");
 $audit = checkFile("audit.log");
 $error = checkFile("error.log");
 $env = checkFile(".env");
@@ -96,7 +97,7 @@ $username = $_SESSION['username'] ?? '-';
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>Systemstatus</title>
+  <title>system status</title>
   <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
 
@@ -104,50 +105,50 @@ $username = $_SESSION['username'] ?? '-';
 <div class="container-fluid mt-4">
 <?php include "admin_tab_nav.php"; ?>
 <div style="width: 90%; margin: 0 auto;">
-  <h5 class="mb-3">Systemstatus</h5>
+  <h5 class="mb-3">system status</h5>
 
-  <div class="mb-3 text-dark fw-bold" style="font-size: 1.25rem;">
-    Angemeldet als: <strong><?= htmlspecialchars($username) ?></strong>
+  <div class="mb-3 text-dark fw-bold" style="font-size: 1rem;">
+    logged in: <strong><?= htmlspecialchars($username) ?></strong>
     (Session-ID: <?= session_id() ?>)
   </div>
 
   <table class="table table-sm table-bordered bg-white shadow-sm">
     <thead class="table-light">
       <tr>
-        <th>Komponente</th>
-        <th>Existiert</th>
-        <th>Lesbar</th>
-        <th>Schreibbar</th>
-        <th>Größe</th>
-        <th>Verschlüsselt</th>
+        <th>component</th>
+        <th>exist</th>
+        <th>readable</th>
+        <th>writable</th>
+        <th>Größesize</th>
+        <th>encrypted</th>
       </tr>
     </thead>
     <tbody>
-      <tr><td>users.db</td><td><?= statusBadge($dbFileStatus['exists']) ?></td><td><?= statusBadge($dbFileStatus['readable']) ?></td><td><?= statusBadge($dbFileStatus['writable']) ?></td><td><?= $dbFileStatus['size'] ?> B</td><td>-</td></tr>
-      <tr><td>info.db</td><td><?= statusBadge($dbinfo['exists']) ?></td><td><?= statusBadge($dbinfo['readable']) ?></td><td><?= statusBadge($dbinfo['writable']) ?></td><td><?= $dbinfo['size'] ?> B</td><td>-</td></tr>
-      <tr><td>encryption.key</td><td><?= statusBadge($encryption['exists']) ?></td><td><?= statusBadge($encryption['readable']) ?></td><td><?= statusBadge($encryption['writable']) ?></td><td><?= $encryption['size'] ?> B</td><td>-</td></tr>
+      <tr><td>users.db - user and links db</td><td><?= statusBadge($dbFileStatus['exists']) ?></td><td><?= statusBadge($dbFileStatus['readable']) ?></td><td><?= statusBadge($dbFileStatus['writable']) ?></td><td><?= $dbFileStatus['size'] ?> B</td><td>-</td></tr>
+      <tr><td>cms.db - mini cms db</td><td><?= statusBadge($dbcms['exists']) ?></td><td><?= statusBadge($dbcms['readable']) ?></td><td><?= statusBadge($dbcms['writable']) ?></td><td><?= $dbcms['size'] ?> B</td><td>-</td></tr>
+      <tr><td>encryption.key - your personal variant</td><td><?= statusBadge($encryption['exists']) ?></td><td><?= statusBadge($encryption['readable']) ?></td><td><?= statusBadge($encryption['writable']) ?></td><td><?= $encryption['size'] ?> B</td><td>-</td></tr>
       <tr><td>audit.log</td><td><?= statusBadge($audit['exists']) ?></td><td><?= statusBadge($audit['readable']) ?></td><td><?= statusBadge($audit['writable']) ?></td><td><?= $audit['size'] ?> B</td><td>-</td></tr>
       <tr><td>error.log</td><td><?= statusBadge($error['exists']) ?></td><td><?= statusBadge($error['readable']) ?></td><td><?= statusBadge($error['writable']) ?></td><td><?= $error['size'] ?> B</td><td>-</td></tr>
-      <tr><td>.env</td><td><?= statusBadge($env['exists']) ?></td><td><?= statusBadge($env['readable']) ?></td><td><?= statusBadge($env['writable']) ?></td><td><?= $env['size'] ?> B</td><td><?= $envEnc ?></td></tr>
-      <tr><td>.envad</td><td><?= statusBadge($envad['exists']) ?></td><td><?= statusBadge($envad['readable']) ?></td><td><?= statusBadge($envad['writable']) ?></td><td><?= $envad['size'] ?> B</td><td><?= $envadEnc ?></td></tr>
+      <tr><td>.env - smtp config</td><td><?= statusBadge($env['exists']) ?></td><td><?= statusBadge($env['readable']) ?></td><td><?= statusBadge($env['writable']) ?></td><td><?= $env['size'] ?> B</td><td><?= $envEnc ?></td></tr>
+      <tr><td>.envad - ad config</td><td><?= statusBadge($envad['exists']) ?></td><td><?= statusBadge($envad['readable']) ?></td><td><?= statusBadge($envad['writable']) ?></td><td><?= $envad['size'] ?> B</td><td><?= $envadEnc ?></td></tr>
     </tbody>
   </table>
 
-  <h5 class="mt-4">Serverinformationen</h5>
+  <h5 class="mt-4">server informations</h5>
   <ul class="list-group list-group-flush mb-4">
-    <li class="list-group-item">PHP-Version: <?= phpversion() ?></li>
-    <li class="list-group-item">Webserver: <?= $_SERVER['SERVER_SOFTWARE'] ?? 'unbekannt' ?></li>
-    <li class="list-group-item">System: <?= PHP_OS ?></li>
-    <li class="list-group-item">PHPMailer erkannt: <?= statusBadge($mailerStatus === "Ja") ?> – <?= implode(", ", $mailerDiag) ?></li>
+    <li class="list-group-item">PHP-version: <?= phpversion() ?></li>
+    <li class="list-group-item">webserver: <?= $_SERVER['SERVER_SOFTWARE'] ?? 'unbekannt' ?></li>
+    <li class="list-group-item">system: <?= PHP_OS ?></li>
+    <li class="list-group-item">PHPMailer exist: <?= statusBadge($mailerStatus === "Ja") ?> – <?= implode(", ", $mailerDiag) ?></li>
   </ul>
 
   <h5 class="mt-4">Datenbank-Zusammenfassung</h5>
   <ul class="list-group list-group-flush mb-4">
-    <li class="list-group-item">Benutzer insgesamt: <?= $totalUsers ?></li>
-    <li class="list-group-item">Inaktive Benutzer: <?= $inactiveUsers ?></li>
-    <li class="list-group-item">Admin-Benutzer: <?= $adminUsers ?></li>
-    <li class="list-group-item">Gespeicherte Links: <?= $totalLinks ?></li>
-    <li class="list-group-item">Offene Linkanfragen: <?= $openRequests ?></li>
+    <li class="list-group-item">all users: <?= $totalUsers ?></li>
+    <li class="list-group-item">active users: <?= $inactiveUsers ?></li>
+    <li class="list-group-item">admin users: <?= $adminUsers ?></li>
+    <li class="list-group-item">saved links: <?= $totalLinks ?></li>
+    <li class="list-group-item">open linkrequests: <?= $openRequests ?></li>
   </ul>
 
   </div>

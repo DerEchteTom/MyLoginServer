@@ -1,5 +1,5 @@
 <?php
-// Datei: init-db.php – Stand: 2025-05-15  Europe/Berlin
+// Datei: init-db.php â€“ Stand: 2025-05-15  Europe/Berlin
 
 date_default_timezone_set('Europe/Berlin');
 
@@ -61,7 +61,7 @@ try {
     )");
     logSuccess("Tabelle 'user_links' OK.");
 
-    // Log-Dateien prüfen
+    // Log-Dateien pruefen
     foreach (['audit.log', 'error.log'] as $logfile) {
         if (!file_exists($logfile)) {
             file_put_contents($logfile, '');
@@ -71,7 +71,7 @@ try {
         }
     }
 
-    // .env prüfen und ggf. ergänzen
+    // .env pruefen und ggf. ergaenzen
     $envFile = __DIR__ . '/.env';
     $defaultEnv = [
         'SMTP_HOST'   => '',
@@ -106,11 +106,49 @@ try {
         }
     }
 
-    logSuccess("Initialization complete.");
+    logSuccess("Initialization .env complete.");
+
+    // .envad pruefen und ggf. ergaenzen
+    $envadFile = __DIR__ . '/.envad';
+    $defaultEnvad = [
+        'AD_HOST'   => '',
+        'AD_PORT'   => '',
+        'AD_BASE_DN'   => '',
+        'AD_USER_ATTRIBUTE'   => '',
+        'AD_DOMAIN'   => '',
+        'AD_BIND_DN'   => '',
+        'AD_BIND_PW'   => '',
+    ];
+
+    if (!file_exists($envadFile)) {
+        $content = "";
+        foreach ($defaultEnvad as $key => $val) {
+            $content .= "$key=$val\n";
+        }
+        file_put_contents($envadFile, $content);
+        logSuccess(".envad created.");
+    } else {
+        $envadLines = file($envadFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        $envadKeys = array_map(fn($line) => explode('=', $line, 2)[0], $envadLines);
+        $newLines = [];
+
+        foreach ($defaultEnvad as $key => $default) {
+            if (!in_array($key, $envadKeys)) {
+                $newLines[] = "$key=$default";
+                logInfo("$key added to .envad.");
+            }
+        }
+
+        if ($newLines) {
+            file_put_contents($envadFile, "\n" . implode("\n", $newLines), FILE_APPEND);
+        }
+    }
+
+    logSuccess("Initialization .envad complete.");
 
 } catch (Exception $e) {
     logError("Exception in init-db.php: " . $e->getMessage());
     exit(1);
 }
-logSuccess("Initialization complete.");
+logSuccess("Initialization process complete.");
 exit(0);

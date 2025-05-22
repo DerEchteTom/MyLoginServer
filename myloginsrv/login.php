@@ -1,5 +1,5 @@
 <?php
-// Datei: login_combined_lowercase.php – Kombinierter Login mit lowercase – Stand: 2025-05-13 Europe/Berlin
+// Datei: login_combined_lowercase.php â€“ Kombinierter Login mit lowercase â€“ Stand: 2025-05-13 Europe/Berlin
 session_start();
 date_default_timezone_set('Europe/Berlin');
 require_once 'config_support.php';
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['local_login'])) {
             $info = "Dein Konto ist vorhanden, aber noch nicht aktiviert.";
         }
     } else {
-        $error = "Ungültiger Benutzername oder Passwort.";
+        $error = "UngÃ¼ltiger Benutzername oder Passwort.";
     }
 }
 
@@ -50,7 +50,7 @@ function try_ad_login($username, $password, &$debug) {
     $bindpw = decryptValue($env['AD_BIND_PW'] ?? '', getEncryptionKey());
     $basedn = decryptValue($env['AD_BASE_DN'] ?? '', getEncryptionKey());
 
-    $debug[] = "AD-Login: $username → Host=$host, Port=$port";
+    $debug[] = "AD-Login: $username â†’ Host=$host, Port=$port";
     $conn = @ldap_connect($host, $port);
     if (!$conn) return false;
     ldap_set_option($conn, LDAP_OPT_PROTOCOL_VERSION, 3);
@@ -128,7 +128,7 @@ Login: $link
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Kombinierter Login</title>
+    <title>login page local- /ad*login</title>
     <link href="assets/css/bootstrap.min.css" rel="stylesheet">
     <script src="debug_toggle.js"></script>
 </head>
@@ -145,39 +145,39 @@ Login: $link
     <div class="row">
         <div class="col-md-6">
             <form method="post" class="mb-4 border p-3 bg-light rounded">
-                <h5>Lokaler Login</h5>
+                <h5>local login</h5>
                 <input type="hidden" name="local_login" value="1">
                 <div class="mb-2">
-                    <label>Benutzername:</label>
+                    <label>user name:</label>
                     <input type="text" name="local_user" class="form-control" required>
                 </div>
                 <div class="mb-2">
-                    <label>Passwort:</label>
+                    <label>password:</label>
                     <input type="password" name="local_pass" class="form-control" required>
                 </div>
-                <button type="submit" class="btn btn-outline-primary">Login</button>
+                <button type="submit" class="btn btn-outline-primary">login</button>
             </form>
         </div>
         <div class="col-md-6">
             <form method="post" class="mb-4 border p-3 bg-light rounded">
-                <h5>AD-Login</h5>
+                <h5>ad-login</h5>
                 <input type="hidden" name="ad_login" value="1">
                 <div class="mb-2">
-                    <label>Benutzername:</label>
+                    <label>user name:</label>
                     <input type="text" name="ad_user" class="form-control" required>
                 </div>
                 <div class="mb-2">
-                    <label>Passwort:</label>
+                    <label>password:</label>
                     <input type="password" name="ad_pass" class="form-control" required>
                 </div>
-                <button type="submit" class="btn btn-outline-secondary">AD-Login</button>
+                <button type="submit" class="btn btn-outline-primary">ad-login</button>
             </form>
         </div>
     </div>
 
     <div class="d-flex gap-2 justify-content-center my-4">
-        <a href="register.php" class="btn btn-sm btn-outline-secondary">Registrieren</a>
-        <a href="forgot.php" class="btn btn-sm btn-outline-secondary">Passwort vergessen?</a>
+        <a href="register.php" class="btn btn-sm btn-outline-secondary">register</a>
+        <a href="forgot.php" class="btn btn-sm btn-outline-secondary">password lost?</a>
     </div>
 
     <?php

@@ -1,5 +1,5 @@
 <?php
-// File: admin_tab_linkeditor.php – Visual Link Editor + Export + Apply – Version: 2025-05-15 Europe/Berlin
+// File: admin_tab_linkeditor.php Visual Link Editor + Export + Apply Version: 2025-05-15 Europe/Berlin
 date_default_timezone_set('Europe/Berlin');
 require_once "auth.php";
 requireRole('admin');
@@ -27,25 +27,25 @@ $users = $db->query("SELECT username FROM users ORDER BY username ASC")->fetchAl
 <div class="container-fluid mt-4">
 <?php include "admin_tab_nav.php"; ?>
 <div style="width: 90%; margin: 0 auto;">
-<h4>Link Assignment Editor</h4>
+<h4>link assignment editor</h4>
 <form id="linkForm" method="post">
     <div class="mb-3">
-        <label class="form-label">Edit Links:</label>
+        <label class="form-label">edit links:</label>
         <table class="table table-bordered table-sm bg-white" id="linkTable">
-            <thead><tr><th>Alias</th><th>URL</th><th style="width:40px;"></th></tr></thead>
+            <thead><tr><th>alias</th><th>url</th><th style="width:40px;"></th></tr></thead>
             <tbody>
                 <tr>
                     <td><input type="text" name="alias[]" class="form-control"></td>
                     <td><input type="text" name="url[]" class="form-control"></td>
-                    <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRow(this)">–</button></td>
+                    <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRow(this)">delete</button></td>
                 </tr>
             </tbody>
         </table>
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addRow()">+ Add link</button>
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addRow()">+ add new link</button>
     </div>
 
     <div class="mb-3">
-        <label class="form-label">Assign to users:</label>
+        <label class="form-label">assign to users:</label>
         <div class="user-cols">
             <select name="users[]" id="userSelect" class="form-select" multiple size="8">
                 <?php foreach ($users as $u): ?>
@@ -55,21 +55,21 @@ $users = $db->query("SELECT username FROM users ORDER BY username ASC")->fetchAl
         </div>
         <div class="form-check mt-2">
             <input class="form-check-input" type="checkbox" id="to_all" name="to_all" onchange="toggleAll(this)">
-            <label class="form-check-label" for="to_all">Assign to all users</label>
+            <label class="form-check-label" for="to_all">assign to all users</label>
         </div>
     </div>
 
     <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-        <button type="button" class="btn btn-outline-primary" onclick="exportJSON()">Show JSON</button>
-        <button type="button" class="btn btn-outline-success" onclick="downloadJSON()">Download</button>
-        <label class="form-label m-0 small">Load JSON file:</label>
+        <button type="button" class="btn btn-outline-primary" onclick="exportJSON()">refresh JSON view</button>
+        <button type="button" class="btn btn-outline-success" onclick="downloadJSON()">export JSON</button>
+        <label class="form-label m-0 small">import JSON file:</label>
         <input type="file" accept=".json" onchange="importJSON(event)" class="form-control form-control-sm" style="max-width: 300px;">
     </div>
 
     <textarea id="exportArea" class="form-control mt-3" rows="10" placeholder="Exported JSON will appear here..." readonly></textarea>
 
     <div class="mt-3 d-flex gap-2 align-items-center">
-        <button type="button" class="btn btn-outline-danger" onclick="assignLinks()">Assign links now</button>
+        <button type="button" class="btn btn-outline-primary" onclick="assignLinks()">assign links now</button>
         <span id="assignStatus" class="ms-3 text-muted"></span>
     </div>
 </form>
@@ -80,7 +80,7 @@ function addRow() {
     row.innerHTML = `
         <td><input type="text" name="alias[]" class="form-control"></td>
         <td><input type="text" name="url[]" class="form-control"></td>
-        <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRow(this)">–</button></td>`;
+        <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRow(this)">delete“</button></td>`;
     table.appendChild(row);
 }
 
@@ -144,7 +144,7 @@ function importJSON(event) {
                 row.innerHTML = `
                     <td><input type="text" name="alias[]" class="form-control" value="${link.alias ?? ''}"></td>
                     <td><input type="text" name="url[]" class="form-control" value="${link.url ?? ''}"></td>
-                    <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRow(this)">–</button></td>`;
+                    <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRow(this)">delete</button></td>`;
                 tbody.appendChild(row);
             });
 
@@ -190,16 +190,22 @@ function assignLinks() {
     .then(r => r.text())
     .then(response => {
         document.getElementById("assignStatus").innerHTML =
-            '<span class="text-success">✔ Assignment completed</span>';
+            '<span class="text-success">assignment completed</span>';
         alert("Link assignment completed:\n\n" + response);
     })
     .catch(err => {
         document.getElementById("assignStatus").innerHTML =
-            '<span class="text-danger">✖ Error during assignment</span>';
+            '<span class="text-danger">âœ– Error during assignment</span>';
         console.error(err);
     });
 }
 </script>
+<div class="container mt-4">
+    <label for="exampleTextArea" class="form-label">info</label>
+    <textarea class="form-control" id="exampleTextArea" rows="5" placeholder="There are two ways to add links - manually by entering the URL and alias in the forms above or import pre-configured links based on the .json
+Format. Please select the corresponding users they should be assigned to the new links or enable the all users function to asign for. The
+refresh function (please always use this button!) shows then the current JSON status, which can be later assigned directly or exported again."></textarea>
+</div>
 </div>
 </div>
 </body>

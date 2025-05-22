@@ -1,4 +1,4 @@
-// Datei: debug_toggle.js – Version: 2025-05-09_01
+// Datei: debug_toggle.js â€“ Version: 2025-05-09_01
 // Beschreibung: JavaScript zur Umschaltung der Debug-Anzeige (Debug-Box)
 
 function toggleDebug() {

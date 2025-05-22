@@ -1,5 +1,5 @@
 <?php
-// Datei: admin.php – geschützter Adminbereich
+// Datei: admin.php â€“ geschÃ¼tzter Adminbereich
 require_once "auth.php";
 ?>
 <!DOCTYPE html>

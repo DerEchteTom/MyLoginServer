@@ -1,5 +1,5 @@
 <?php
-// Datei: linkeditor_import.php – Stand: 2025-05-16 Europe/Berlin
+// Datei: linkeditor_import.php â€“ Stand: 2025-05-16 Europe/Berlin
 date_default_timezone_set('Europe/Berlin');
 require_once 'auth.php';
 requireRole('admin');
@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif (is_array($users)) {
                 $usernames = $users;
             } else {
-                $errors[] = "Invalid 'users' value – must be 'all' or an array.";
+                $errors[] = "Invalid 'users' value â€“ must be 'all' or an array.";
                 $usernames = [];
             }
 

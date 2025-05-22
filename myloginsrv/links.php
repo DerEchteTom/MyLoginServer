@@ -1,5 +1,5 @@
 <?php
-// Datei: links.php – Stand: 2025-04-22 11:20 Europe/Berlin
+// Datei: links.php â€“ Stand: 2025-04-22 11:20 Europe/Berlin
 
 date_default_timezone_set('Europe/Berlin');
 session_start();
@@ -40,8 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['alias'], $_POST['url'
                 ':u' => $url,
                 ':c' => date('Y-m-d H:i:s')
             ]);
-            $info = "Anfrage wurde übermittelt. Ein Admin wird sie prüfen.";
-            @file_put_contents("audit.log", date('c') . " Linkanfrage von Benutzer $username (ID $uid): $alias → $url
+            $info = "Anfrage wurde Ã¼bermittelt. Ein Admin wird sie prÃ¼fen.";
+            @file_put_contents("audit.log", date('c') . " Linkanfrage von Benutzer $username (ID $uid): $alias â†’ $url
 ", FILE_APPEND);
         } catch (Exception $e) {
             $error = "Fehler beim Speichern der Anfrage.";
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['alias'], $_POST['url'
 ", FILE_APPEND);
         }
     } else {
-        $error = "Bitte gültigen Alias und vollständige URL eingeben.";
+        $error = "Bitte gÃ¼ltigen Alias und vollstÃ¤ndige URL eingeben.";
     }
 }
 ?>
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['alias'], $_POST['url'
                 foreach ($links as $link): ?>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <span><?= htmlspecialchars($link['alias']) ?></span>
-                        <a href="<?= htmlspecialchars($link['url']) ?>" target="_blank" class="btn btn-sm btn-outline-primary">Öffnen</a>
+                        <a href="<?= htmlspecialchars($link['url']) ?>" target="_blank" class="btn btn-sm btn-outline-primary">open</a>
                     </li>
                 <?php endforeach; ?>
             </ul>
@@ -83,18 +83,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['alias'], $_POST['url'
 
             <form method="post" class="row g-2">
                 <div class="col-md-5">
-                    <input type="text" name="alias" class="form-control form-control-sm" placeholder="Bezeichnung" required>
+                    <input type="text" name="alias" class="form-control form-control-sm" placeholder="alias" required>
                 </div>
                 <div class="col-md-5">
                     <input type="url" name="url" class="form-control form-control-sm" placeholder="https://..." required>
                 </div>
                 <div class="col-md-2 d-grid">
-                    <button type="submit" class="btn btn-sm btn-outline-success">Anfragen</button>
+                    <button type="submit" class="btn btn-sm btn-outline-success">send request</button>
                 </div>
             </form>
         </div>
     </div>
-    <a href="logout.php" class="btn btn-outline-dark btn-sm">Logout</a>
+    <a href="logout.php" class="btn btn-outline-dark btn-sm">logout</a>
 </div>
 </body>
 </html>

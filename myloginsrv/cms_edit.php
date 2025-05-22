@@ -1,5 +1,4 @@
 <?php
-// cms_edit.php – CMS mit Editor, Sektionen, Bildverwaltung, Timer und Logging
 session_start();
 date_default_timezone_set('Europe/Berlin');
 require_once 'config.php';
@@ -16,103 +15,96 @@ function log_error($msg) {
 $pdo = new PDO('sqlite:cms.db');
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$availableSections = [];
-$stmt = $pdo->query("SELECT section_name FROM page_content ORDER BY section_name ASC");
-while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-    $availableSections[] = $row['section_name'];
-}
 $section = $_GET['section'] ?? 'main';
-if (!in_array($section, $availableSections)) {
-    $section = 'main';
-}
+$stmt = $pdo->prepare("SELECT section_name FROM page_content");
+$stmt->execute();
+$sections = $stmt->fetchAll(PDO::FETCH_COLUMN);
+if (!in_array($section, $sections)) $section = 'main';
 
 $stmt = $pdo->prepare("SELECT text_content FROM page_content WHERE section_name = ?");
 $stmt->execute([$section]);
-$contentHTML = $stmt->fetchColumn() ?? '';
+$contentHTML = $stmt->fetchColumn() ?: '';
 
+// Feedback-Handling
 $feedback = $_SESSION['feedback'] ?? '';
 unset($_SESSION['feedback']);
 
+// Fetch max scaling value
+$stmt = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_name = 'image_max_scaling'");
+$stmt->execute();
+$max_scaling = $stmt->fetchColumn() ?? '300'; // Standardwert
+
+// Fetch scaling options
+$stmt = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_name = 'image_scaling_options'");
+$stmt->execute();
+$scaling_options = explode(',', $stmt->fetchColumn() ?? '100,150,200,300,400'); // Default options
+
+// Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Save content
     if (isset($_POST['quill_html'])) {
         $html = $_POST['quill_html'];
         $stmt = $pdo->prepare("UPDATE page_content SET text_content = :html WHERE section_name = :section");
-
         if ($stmt->execute([':html' => $html, ':section' => $section])) {
             log_audit("Content updated for section '$section'");
-            // cleanUnusedImages($html, __DIR__ . '/uploads'); // aktuell deaktiviert
-            $_SESSION['feedback'] = "Content saved successfully for section '$section'.";
+            $_SESSION['feedback'] = "Content updated.";
             header("Location: cms_edit.php?section=" . urlencode($section));
             exit;
-        } else {
-            log_error("Failed to update content for section '$section'");
-            $feedback = "Failed to save content.";
         }
     }
 
-    if (isset($_POST['delete_image']) && isset($_POST['filename'])) {
-        $file = basename($_POST['filename']);
-        $path = __DIR__ . "/uploads/$file";
-        if (is_file($path)) {
-            if (unlink($path)) {
-                $feedback = "Image '$file' deleted.";
-                log_audit("Image '$file' deleted manually in editor.");
-            } else {
-                log_error("Failed to delete image '$file'");
-                $feedback = "Failed to delete image.";
-            }
-        }
-    }
-
-    if (isset($_POST['create_section']) && isset($_POST['new_section']) && $_POST['new_section'] !== '') {
-        $newSection = trim($_POST['new_section']);
-        if (!preg_match('/^[a-zA-Z0-9_-]{1,32}$/', $newSection)) {
-            $feedback = "Invalid section name.";
-            log_error("Invalid section name attempted: '$newSection'");
-        } else {
+    // Create new section
+    if (isset($_POST['new_section'], $_POST['create_section'])) {
+        $new = trim($_POST['new_section']);
+        if (preg_match('/^[a-zA-Z0-9_-]{1,32}$/', $new)) {
             $stmt = $pdo->prepare("SELECT COUNT(*) FROM page_content WHERE section_name = ?");
-            $stmt->execute([$newSection]);
+            $stmt->execute([$new]);
             if ($stmt->fetchColumn() == 0) {
-                $pdo->prepare("INSERT INTO page_content (section_name, text_content) VALUES (?, '')")->execute([$newSection]);
-                $availableSections[] = $newSection;
-                $feedback = "Section '$newSection' created.";
-                log_audit("New section created: '$newSection'");
-                header("Location: cms_edit.php?section=" . urlencode($newSection));
+                $pdo->prepare("INSERT INTO page_content (section_name, text_content) VALUES (?, '')")->execute([$new]);
+                $_SESSION['feedback'] = "Section '$new' created.";
+                header("Location: cms_edit.php?section=" . urlencode($new));
                 exit;
-            } else {
-                $feedback = "Section already exists.";
             }
         }
     }
 
+    // Delete section
+    if (isset($_POST['delete_section'])) {
+        if ($section !== 'main') {
+            $pdo->prepare("DELETE FROM page_content WHERE section_name = ?")->execute([$section]);
+            log_audit("Section deleted: $section");
+            $_SESSION['feedback'] = "Section deleted.";
+            header("Location: cms_edit.php?section=main");
+            exit;
+        }
+    }
+
+    // Update timer
     if (isset($_POST['update_timer'], $_POST['new_timer'])) {
-        $timerValue = (int) $_POST['new_timer'];
-        if ($timerValue >= 0 && $timerValue <= 9999) {
+        $val = (int) $_POST['new_timer'];
+        if ($val >= 0 && $val <= 9999) {
             $stmt = $pdo->prepare("REPLACE INTO settings (setting_name, setting_value) VALUES ('redirect_timer', ?)");
-            $stmt->execute([$timerValue]);
-            $feedback = "Timer updated to $timerValue seconds.";
-            log_audit("Redirect timer updated to $timerValue seconds.");
-        } else {
-            $feedback = "Invalid timer value.";
-            log_error("Timer update failed: value '$timerValue' out of bounds.");
+            $stmt->execute([$val]);
+            $_SESSION['feedback'] = "Timer updated to $val.";
+            log_audit("Timer updated to $val");
+            header("Location: cms_edit.php?section=" . urlencode($section));
+            exit;
+        }
+    }
+
+    // Update image scaling
+    if (isset($_POST['update_scaling'], $_POST['max_scaling'])) {
+        $val = (int) $_POST['max_scaling'];
+        if (in_array($val, $scaling_options)) {
+            $stmt = $pdo->prepare("REPLACE INTO settings (setting_name, setting_value) VALUES ('image_max_scaling', ?)");
+            $stmt->execute([$val]);
+            $_SESSION['feedback'] = "Image scaling updated to $val.";
+            log_audit("Image scaling updated to $val");
+            header("Location: cms_edit.php?section=" . urlencode($section));
+            exit;
         }
     }
 }
-
-$stmt = $pdo->query("SELECT text_content FROM page_content");
-$usedImages = [];
-while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-    preg_match_all('/<img[^>]+src="\/uploads\/([^"]+)"/', $row['text_content'], $matches);
-    if (!empty($matches[1])) {
-        $usedImages = array_merge($usedImages, $matches[1]);
-    }
-}
-$usedImages = array_unique(array_map('basename', $usedImages));
-$uploadDir = __DIR__ . '/uploads/';
-$allImages = glob($uploadDir . '*.{jpg,jpeg,png,gif}', GLOB_BRACE);
-$images = array_filter($allImages, function($img) use ($usedImages) {
-    return in_array(basename($img), $usedImages);
-});
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -122,170 +114,88 @@ $images = array_filter($allImages, function($img) use ($usedImages) {
   <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
   <style>
-    #editor-container { height: 600px; background: white; border-radius: 8px; }
-    .ql-editor img { max-width: 100%; height: auto; border-radius: 6px; }
-    .thumb {
-      width: 100%;
-      height: 100px;
-      object-fit: cover;
-      border-radius: 4px;
-      margin-bottom: 8px;
-    }
+    #editor-container { height: 500px; background: white; border-radius: 6px; }
   </style>
 </head>
-<body class="p-4 bg-light">
-<div class="container mt-4" style="max-width: 90%;">
-  <h3>Edit CMS Content</h3>
-  <form method="get" class="mb-3">
-    <label for="section" class="form-label">Select section:</label>
-    <div class="d-flex gap-2">
-      <select name="section" id="section" class="form-select w-auto" onchange="this.form.submit()">
-        <?php foreach ($availableSections as $sec): ?>
-          <option value="<?= htmlspecialchars($sec) ?>" <?= $sec === $section ? 'selected' : '' ?>>
-            <?= htmlspecialchars(ucfirst($sec)) ?>
-          </option>
-        <?php endforeach; ?>
-      </select>
-      <a href="dashboard.php" class="btn btn-outline-secondary">Back to Dashboard</a>
-    </div>
-  </form>
+<body class="bg-light p-4">
+<div class="container-fluid mt-4">
+<?php include "admin_tab_nav.php"; ?>
+<div style="width: 90%; margin: 0 auto;">
+  <h3>Edit miniCMS Content</h3>
 
   <?php if ($feedback): ?>
     <div class="alert alert-info"><?= htmlspecialchars($feedback) ?></div>
   <?php endif; ?>
 
-  <form method="POST" id="save-form">
+  <form method="get" class="mb-3">
+    <select name="section" class="form-select w-auto d-inline" onchange="this.form.submit()">
+      <?php foreach ($sections as $s): ?>
+        <option value="<?= htmlspecialchars($s) ?>" <?= $s === $section ? 'selected' : '' ?>><?= htmlspecialchars($s) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <a href="dashboard.php" class="btn btn-outline-secondary btn-sm ms-2">Back</a>
+  </form>
+
+  <form method="post" id="save-form">
     <div id="editor-container"></div>
     <input type="hidden" name="quill_html" id="quill_html">
     <input type="hidden" id="editor-content" value="<?= htmlspecialchars($contentHTML) ?>">
-    <div class="d-flex gap-2 mt-3">
-      <button type="submit" class="btn btn-outline-primary">Save Content</button>
-    </div>
+    <button class="btn btn-outline-primary mt-3" type="submit">Save Content</button>
   </form>
 
-  <hr class="my-5">
-  <h5>Uploaded Images</h5>
-  <div class="row g-1">
-    <?php foreach ($images as $img): $filename = basename($img); ?>
-      <div class="col-sm-4 col-md-2 mb-4">
-        <img src="/uploads/<?= htmlspecialchars($filename) ?>" alt="<?= $filename ?>" class="thumb img-thumbnail">
-        <form method="POST" onsubmit="return confirm('Delete image <?= htmlspecialchars($filename) ?>?');">
-          <input type="hidden" name="filename" value="<?= htmlspecialchars($filename) ?>">
-          <button name="delete_image" class="btn btn-sm btn-outline-danger w-100 mt-2">Delete</button>
-        </form>
-      </div>
-    <?php endforeach; ?>
-  </div>
-
-  <hr class="my-4">
+  <hr>
   <h5>Manage Sections</h5>
-  <form method="POST" class="row g-2 align-items-center mb-4 d-flex flex-wrap">
-    <div class="col-auto" style="min-width: 250px;">
-      <input type="text" name="new_section" class="form-control" placeholder="New section name" required pattern="^[a-zA-Z0-9_-]{1,32}$">
-    </div>
-    <div class="col-auto">
-      <button name="create_section" class="btn btn-outline-success">Add Section</button>
-    </div>
-    <div class="col-auto">
-      <span class="form-text text-muted">Current: <strong><?= htmlspecialchars($section) ?></strong></span>
-    </div>
-    <div class="col-auto">
-      <button name="delete_section_fixed" class="btn btn-outline-danger" onclick="return confirm('Really delete section <?= htmlspecialchars($section) ?>?');">Delete Section</button>
-    </div>
-  </form>
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-4">
+    <form method="post" class="d-flex gap-2">
+      <input type="text" name="new_section" class="form-control" placeholder="New section" required pattern="^[a-zA-Z0-9_-]{1,32}$" style="min-width:200px;">
+      <button name="create_section" class="btn btn-outline-success btn-sm" style="min-width:120px;">Add Section</button>
+    </form>
+    <form method="post" class="ms-3">
+      <button name="delete_section" class="btn btn-outline-danger btn-sm">Delete Section</button>
+    </form>
+    <form method="post" class="ms-auto d-flex align-items-center gap-2">
+      <label class="form-label m-0">Timer for Dashboard:</label>
+      <input type="number" name="new_timer" min="0" max="9999" class="form-control form-control-sm" style="width:80px;" required value="<?php
+        $stmt = $pdo->query("SELECT setting_value FROM settings WHERE setting_name = 'redirect_timer'");
+        echo htmlspecialchars($stmt->fetchColumn() ?: '5');
+      ?>">
+      <button name="update_timer" class="btn btn-sm btn-outline-primary">Save</button>
+    </form>
 
-  
-  <h5>Delete Section</h5>
-  <form method="POST" onsubmit="return confirm('Really delete this section?');" class="mb-4">
-    <input type="hidden" name="section_name" value="<?= htmlspecialchars($section) ?>">
-    <button name="delete_section_fixed" class="btn btn-sm btn-outline-danger">Delete Section</button>
-  </form>
-
-  <h5>Redirect Timer (Seconds)</h5>
-  <form method="POST" class="row g-2 align-items-center mb-4">
-    <?php
-    $stmt = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_name = 'redirect_timer'");
-    $stmt->execute();
-    $currentTimer = $stmt->fetchColumn() ?? '5';
-    ?>
-    <div class="col-auto">
-      <input type="number" name="new_timer" class="form-control" maxlength="4" min="0" max="9999" value="<?= htmlspecialchars($currentTimer) ?>" required>
-    </div>
-    <div class="col-auto">
-      <button name="update_timer" class="btn btn-outline-primary">Update Timer</button>
-    </div>
-  </form>
-
-  <h5>Check Missing Images</h5>
-  <div class="mb-3">
-    <?php
-    $stmt = $pdo->query("SELECT section_name, text_content FROM page_content");
-    $missing = [];
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        preg_match_all('/<img[^>]+src="\/uploads\/([^"]+)"/', $row['text_content'], $matches);
-        foreach ($matches[1] ?? [] as $fname) {
-            if (!file_exists(__DIR__ . '/uploads/' . basename($fname))) {
-                $missing[] = htmlspecialchars($fname) . " (Section: " . htmlspecialchars($row['section_name']) . ")";
-            }
-        }
-    }
-    if (!empty($missing)): ?>
-      <ul class="text-danger">
-        <?php foreach ($missing as $m): ?><li><?= $m ?></li><?php endforeach; ?>
-      </ul>
-    <?php else: ?>
-      <p class="text-success">No missing image links found in database.</p>
-    <?php endif; ?>
+    <!-- Dropdown for Image Scaling -->
+    <form method="post" class="d-flex gap-2 ms-3">
+      <label class="form-label m-0">Image Scaling:</label>
+      <select name="max_scaling" class="form-select form-select-sm" required style="width: 120px;">
+        <?php foreach ($scaling_options as $option): ?>
+          <option value="<?= htmlspecialchars($option) ?>" <?= $option == $max_scaling ? 'selected' : '' ?>><?= htmlspecialchars($option) ?> x <?= htmlspecialchars($option) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <button name="update_scaling" class="btn btn-sm btn-outline-primary">Save Scaling</button>
+    </form>
   </div>
-
 </div>
 
 <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
 <script>
 const quill = new Quill('#editor-container', {
   theme: 'snow',
-  placeholder: 'Edit content here...',
   modules: {
-    toolbar: [['bold', 'italic', 'underline'], [{ 'list': 'ordered' }, { 'list': 'bullet' }], ['image', 'clean']]
-  }
-});
-const initialContent = document.getElementById("editor-content")?.value || '';
-quill.root.innerHTML = initialContent;
-
-function uploadImage(file) {
-  const formData = new FormData();
-  formData.append("image", file);
-  return fetch("upload_image.php", {
-    method: "POST",
-    body: formData
-  })
-  .then(res => res.json())
-  .then(result => {
-    if (result.success) {
-      const range = quill.getSelection();
-      quill.insertEmbed(range.index, 'image', result.url);
-    } else {
-      alert("Upload failed: " + result.error);
-    }
-  });
+  toolbar: [
+    [{ 'header': [1, 2, 3, false] }],
+    [{ 'font': [] }, { 'size': [] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ 'color': [] }, { 'background': [] }],
+    [{ 'align': [] }],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    [{ 'indent': '-1'}, { 'indent': '+1' }],
+    ['link', 'image', 'code-block'],
+    ['clean']
+  ]
 }
-
-quill.getModule('toolbar').addHandler('image', () => {
-  const input = document.createElement('input');
-  input.setAttribute('type', 'file');
-  input.setAttribute('accept', 'image/*');
-  input.click();
-  input.onchange = () => {
-    const file = input.files[0];
-    if (file) uploadImage(file);
-  };
 });
-
-const saveForm = document.getElementById("save-form");
-saveForm.addEventListener("submit", function(e) {
-  e.preventDefault();
-  document.getElementById("quill_html").value = quill.root.innerHTML;
-  setTimeout(() => saveForm.submit(), 10);
+quill.root.innerHTML = document.getElementById('editor-content').value;
+document.getElementById('save-form').addEventListener('submit', function(e) {
+  document.getElementById('quill_html').value = quill.root.innerHTML;
 });
 </script>
 </body>

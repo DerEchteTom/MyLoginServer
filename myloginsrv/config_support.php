@@ -1,5 +1,5 @@
 <?php
-// Datei: config_support.php – Version: 2025-05-08_02 – SMTP_SECURE=none Fix
+// Datei: config_support.php Version: 2025-05-08_02 SMTP_SECURE=none Fix
 date_default_timezone_set('Europe/Berlin');
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -33,7 +33,7 @@ function parseRawEnv($raw) {
 }
 
 function saveEnvFile($filename, $assoc, $mark_encrypted = false) {
-    $lines = ["# .env – zuletzt bearbeitet: " . date('Y-m-d H:i:s') . " Europe/Berlin"];
+    $lines = ["# zuletzt bearbeitet: " . date('Y-m-d H:i:s') . " Europe/Berlin"];
     if ($mark_encrypted) $lines[] = "# ENCRYPTED: yes";
     foreach ($assoc as $k => $v) {
         $lines[] = "$k=$v";

@@ -46,26 +46,30 @@ $username = trim($_POST['username'] ?? '');
 $password = $_POST['password'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['username'], $_POST['password']) && $username && $password) {
-    $debug_log[] = "Verbindung zu LDAP-Server $host:$port wird aufgebaut...";
+    //$debug_log[] = "Verbindung zu LDAP-Server $host:$port wird aufgebaut...";
+    $debug_log[] = "Verbindung zu LDAP-Server wird aufgebaut...";
     $conn = @ldap_connect($host, $port);
     if (!$conn) {
         $debug_log[] = "FEHLER: Verbindung zu $host fehlgeschlagen.";
     } else {
         ldap_set_option($conn, LDAP_OPT_PROTOCOL_VERSION, 3);
         $debug_log[] = "OK: Verbindung hergestellt.";
-        $debug_log[] = "Bind-Versuch mit technischem Benutzer: $binduser";
+        //$debug_log[] = "Bind-Versuch mit technischem Benutzer: $binduser";
+        $debug_log[] = "Bind-Versuch mit technischem Benutzer.";
         if (!@ldap_bind($conn, $binduser, $bindpass)) {
             $debug_log[] = "FEHLER: Bind mit AD_BIND_DN fehlgeschlagen.";
         } else {
             $debug_log[] = "OK: Bind erfolgreich.";
             $filter = "($attr=$username)";
-            $debug_log[] = "LDAP-Suche mit Filter: $filter in $basedn";
+          //  $debug_log[] = "LDAP-Suche mit Filter: $filter in $basedn";
+          $debug_log[] = "LDAP-Suche mit Filter";
             $search = @ldap_search($conn, $basedn, $filter);
             if ($search) {
                 $entries = ldap_get_entries($conn, $search);
                 if ($entries['count'] > 0) {
                     $dn = $entries[0]['dn'];
-                    $debug_log[] = "OK: Benutzer gefunden mit DN: $dn";
+                    //$debug_log[] = "OK: Benutzer gefunden mit DN: $dn";
+                    $debug_log[] = "OK: Benutzer gefunden.";
                     if (@ldap_bind($conn, $dn, $password)) {
                         $debug_log[] = "✅ Benutzer-Login erfolgreich!";
                     } else {
@@ -85,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['username'], $_POST['p
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>LDAP-Test & Konfiguration</title>
+    <title>LDAP-test & configuration</title>
     <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
@@ -93,18 +97,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['username'], $_POST['p
 
 <?php include "admin_tab_nav.php"; ?>
 <div class="container">
-    <h3>LDAP-Login testen</h3>
+    <h3>LDAP-login check and edit configuration file</h3>
 
     <form method="post" class="mb-3">
         <div class="mb-2">
-            <label for="username" class="form-label">Benutzername:</label>
+            <label for="username" class="form-label">username:</label>
             <input type="text" name="username" id="username" class="form-control" required>
         </div>
         <div class="mb-2">
-            <label for="password" class="form-label">Passwort:</label>
+            <label for="password" class="form-label">password:</label>
             <input type="password" name="password" id="password" class="form-control" required>
         </div>
-        <button type="submit" class="btn btn-outline-primary">Login testen</button>
+        <button type="submit" class="btn btn-outline-primary">check login</button>
     </form>
 
     <?php if (!empty($debug_log)): ?>
@@ -112,15 +116,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['username'], $_POST['p
         <pre class="bg-light p-2 border"><?php foreach ($debug_log as $line) echo htmlspecialchars($line) . "\n"; ?></pre>
     <?php endif; ?>
 
-    <h4 class="mt-5">.envad bearbeiten / verschluesseln</h4>
+    <h4 class="mt-5">edit .envad / encrypt</h4>
     <?php if (!empty($notice)): ?>
         <div class="alert alert-info"><?= htmlspecialchars($notice) ?></div>
     <?php endif; ?>
     <form method="post" class="mb-3">
         <textarea name="env" rows="14" class="form-control font-monospace"><?= htmlspecialchars(file_get_contents($env_file)) ?></textarea>
         <div class="d-flex gap-2 mt-2">
-            <button type="submit" name="env_save" class="btn btn-outline-secondary">Nur speichern</button>
-            <button type="submit" name="env_encrypt" class="btn btn-outline-warning">Jetzt verschlüsseln</button>
+            <button type="submit" name="env_save" class="btn btn-outline-secondary">save</button>
+            <button type="submit" name="env_encrypt" class="btn btn-outline-warning">decrypt</button>
         </div>
     </form>
 
@@ -147,7 +151,7 @@ function toggleDecrypted() {
 }
 </script>
 <?php else: ?>
-    <p class="text-muted mt-3">Entschlüsselte ENVAD-Werte sind aktuell ausgeblendet.</p>
+    <p class="text-muted mt-3">Decrypted ENVAD values are currently hidden.</p>
 <?php endif; ?>
 
 </div>

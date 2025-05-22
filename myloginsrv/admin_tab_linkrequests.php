@@ -1,5 +1,5 @@
 <?php
-// Datei: admin_tab_linkrequests.php – Stand: 2025-04-22 11:29 Europe/Berlin
+// Datei: admin_tab_linkrequests.php â€“ Stand: 2025-04-22 11:29 Europe/Berlin
 
 date_default_timezone_set('Europe/Berlin');
 require_once __DIR__ . '/auth.php';
@@ -29,14 +29,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['id'
                 ':u' => $request['url']
             ]);
             $db->prepare("DELETE FROM link_requests WHERE id = :id")->execute([':id' => $id]);
-            $info = "Anfrage übernommen: " . htmlspecialchars($request['alias']);
+            $info = "Anfrage Ã¼bernommen: " . htmlspecialchars($request['alias']);
             file_put_contents("audit.log", date('c') . " Link freigegeben: " . $request['alias'] . " durch Admin\n", FILE_APPEND);
         }
     } elseif ($action === 'delete') {
         $stmt = $db->prepare("DELETE FROM link_requests WHERE id = :id");
         $stmt->execute([':id' => $id]);
-        $info = "Anfrage gelöscht (ID $id)";
-        file_put_contents("audit.log", date('c') . " Linkanfrage gelöscht ID $id durch Admin\n", FILE_APPEND);
+        $info = "Anfrage gelÃ¶scht (ID $id)";
+        file_put_contents("audit.log", date('c') . " Linkanfrage gelÃ¶scht ID $id durch Admin\n", FILE_APPEND);
     }
 }
 

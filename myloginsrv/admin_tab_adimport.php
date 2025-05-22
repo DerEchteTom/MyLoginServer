@@ -1,5 +1,5 @@
 <?php
-// Datei: admin_tab_adimport_final.php – Final mit Design + Funktion – Stand: 2025-05-13 Europe/Berlin
+// Datei: admin_tab_adimport_final.php â€“ Final mit Design + Funktion â€“ Stand: 2025-05-13 Europe/Berlin
 date_default_timezone_set('Europe/Berlin');
 require_once "auth.php";
 requireRole('admin');
@@ -109,7 +109,7 @@ Mit freundlichen Gruessen.";
                 }
 
             } catch (Exception $e) {
-                file_put_contents("error.log", date('c') . " Fehler beim Einfügen von $username: " . $e->getMessage() . "\n", FILE_APPEND);
+                file_put_contents("error.log", date('c') . " Fehler beim EinfÃ¼gen von $username: " . $e->getMessage() . "\n", FILE_APPEND);
             }
         }
     }
@@ -171,7 +171,7 @@ Mit freundlichen Gruessen.";
     <?php elseif ($stage === 'preview' && $preview): ?>
     <form method="post">
         <input type="hidden" name="stage" value="import">
-        <p class="mb-2">please check user, select role and activation. then start import:</p>
+        <p class="mb-2">Please check user, select role and activation. Then start import:</p>
         <table class="table table-sm table-bordered bg-white mx-auto" style="width: 100%;">
             <thead><tr><th>#</th><th>selected user name</th><th>e-mail</th><th>role</th><th>activ</th><th>send info e-mail</th></tr></thead>
             <tbody>
@@ -207,7 +207,7 @@ Mit freundlichen Gruessen.";
         </div>
     </form>
     <?php elseif ($stage === 'preview'): ?>
-    <p class="text-muted">Keine gültigen Benutzer ausgewählt.</p>
+    <p class="text-muted">Keine gÃ¼ltigen Benutzer ausgewÃ¤hlt.</p>
     <?php endif; ?>
 </div>
 </div>
