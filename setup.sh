@@ -83,7 +83,7 @@ docker exec "$PHP_CONTAINER" bash -c '
 '
 log_success "Database files checked and prepared."
 
-# ------------------ Database Initialization ------------------
+# --------- user & links & cms databases Initialization ------------------
 divider
 log_info "Check init-db.php syntax..."
 docker exec "$PHP_CONTAINER" php -l /var/www/html/init-db.php || { log_error "Syntax error in init-db.php"; exit 1; }
@@ -92,7 +92,7 @@ divider
 log_info "Running init-db.php..."
 docker exec "$PHP_CONTAINER" php /var/www/html/init-db.php
 if [ $? -eq 0 ]; then
-  log_success "Database initialized."
+  log_success "users database initialized."
 else
   log_error "Database failed."
   exit 1
@@ -100,17 +100,15 @@ fi
 
 divider
 log_info "Check init_cms_db.php syntax..."
-docker exec "$PHP_CONTAINER" php -l /var/www/html/init_cms_db.php || {
-  log_error "Syntax error in init_cms_db.php. Aborting."
-  exit 1
-}
+docker exec "$PHP_CONTAINER" php -l /var/www/html/init_cms_db.php || { log_error "Syntax error in init_cms_db.php. Aborting."; exit 1; }
 
 divider
 log_info "Initialize CMS database..."
 if docker exec "$PHP_CONTAINER" php /var/www/html/init_cms_db.php; then
-  log_success "CMS database initialized."
+  log_success "cms database initialized."
 else
-  log_error "CMS database initialization failed."
+  log_error "cms database initialization failed."
+  exit 1
 fi
 
 
